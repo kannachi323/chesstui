@@ -1,0 +1,7 @@
+*.o
+*.exe
+**/chess_cli
+bin/
+**/packs
+**/.csv
+**/*.zst
