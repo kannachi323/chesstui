@@ -1,0 +1,4 @@
+*.o
+*.exe
+**/chess_cli
+bin/
