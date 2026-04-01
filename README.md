@@ -1,17 +1,28 @@
-# chess-cli
+<img width="1200" height="385" alt="b328e384-9886-4a37-b140-0598c9d2c2e6" src="https://github.com/user-attachments/assets/828f2d37-47fc-4f14-9466-dac14eaf6e0c" />
 
-A terminal chess puzzle trainer powered by the [Lichess puzzle database](https://database.lichess.org/#puzzles).
+<div align="center">
+  
+[![Discord](https://img.shields.io/discord/1489013166292734104?logo=discord&label=Discord&logoColor=white&labelColor=black&color=F5F5F5)](https://discord.gg/GqEYhbaM)
+[![release](https://img.shields.io/github/v/release/kannachi323/chess-cli?style=flat&labelColor=black&color=F5F5F5)](https://github.com/kannachi323/chess-cli/releases/latest)
 
-```
-  ╔══════════════════════════════════════╗
-  ║      ♟  c h e s s - c l i  ♟      ║
-  ╚══════════════════════════════════════╝
-```
+</div>
+
+chess-cli lets you play chess directly in your terminal. Compete against yourself, track your improvement over time, and work through thousands of 
+  puzzles without ever leaving the command line.                                                                                                     
+                                                                                                                                                     
+  ## Features                                                                                                                                        
+  - Puzzles from the [Lichess puzzle database](https://database.lichess.org/#puzzles) (3M+ puzzles)
+  - Daily puzzle of the day                                                                                                                          
+  - Random puzzles by rating band (beginner to expert)                                                                                               
+  - Stat tracking and leaderboards                                        
+
+## Installation
+
 
 ## Requirements
 
-- C compiler (gcc or clang)
-- `curl`
+- `C compiler` (gcc, clang, msvc)
+- `CURL` (downloading puzzle packs)
 - `zstd` (for decompressing puzzle packs)
 
 ## Build
