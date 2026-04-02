@@ -3,7 +3,7 @@
 <div align="center">
   
 [![Discord](https://img.shields.io/discord/1489013166292734104?logo=discord&label=Discord&logoColor=white&labelColor=black&color=F5F5F5)](https://discord.gg/GqEYhbaM)
-[![release](https://img.shields.io/github/v/release/kannachi323/chess-cli?style=flat&labelColor=black&color=F5F5F5)](https://github.com/kannachi323/chess-cli/releases/latest)
+[![GitHub Release](https://img.shields.io/github/v/release/kannachi323/chess-cli?include_prereleases&label=release&labelColor=black&color=%23f5f5f5)](https://github.com/kannachi323/chess-cli/releases/latest)
 </div>
 
 `chess-cli` lets you play chess directly in your terminal. Play against your friends online or challenge yourself against Stockfish and other strong AI opponents. Work through millions of puzzles to sharpen your tactical vision.                                                                      
