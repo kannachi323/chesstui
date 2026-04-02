@@ -5,10 +5,23 @@
 
 #include "chess.h"
 
-static const char *piece_unicode[] = {
-    "♙", "♘", "♗", "♖", "♕", "♔",
-    "♟", "♞", "♝", "♜", "♛", "♚",
-};
+static const char *piece_glyph(int idx) {
+    switch (idx) {
+        case  0: return PIECE_W_PAWN;
+        case  1: return PIECE_W_KNIGHT;
+        case  2: return PIECE_W_BISHOP;
+        case  3: return PIECE_W_ROOK;
+        case  4: return PIECE_W_QUEEN;
+        case  5: return PIECE_W_KING;
+        case  6: return PIECE_B_PAWN;
+        case  7: return PIECE_B_KNIGHT;
+        case  8: return PIECE_B_BISHOP;
+        case  9: return PIECE_B_ROOK;
+        case 10: return PIECE_B_QUEEN;
+        case 11: return PIECE_B_KING;
+        default: return " ";
+    }
+}
 
 static char board[8][8];
 
@@ -92,20 +105,28 @@ void chess_print_board(int flipped) {
             char c = board[rank][file];
 
             if (c == '.') {
-                printf("%s   %s", bg, RST);
+                printf("%s    %s", bg, RST);
             } else {
                 int idx = piece_index(c);
                 const char *fg = (idx < 6) ? FG_WHITE : FG_BLACK;
-                printf("%s%s %s %s", bg, fg, piece_unicode[idx], RST);
+                printf("%s%s  %s %s", bg, fg, piece_glyph(idx), RST);
             }
+        }
+        printf("\n");
+
+        printf("   ");
+        for (int fi = 0; fi < 8; fi++) {
+            int file = flipped ? (7 - fi) : fi;
+            int is_light = (rank + file) % 2 == 0;
+            printf("%s    %s", is_light ? BG_LIGHT : BG_DARK, RST);
         }
         printf("\n");
     }
 
     if (flipped) {
-        printf("    %sh  g  f  e  d  c  b  a%s\n", DIM, RST);
+        printf("     %sh   g   f   e   d   c   b   a%s\n", DIM, RST);
     } else {
-        printf("    %sa  b  c  d  e  f  g  h%s\n", DIM, RST);
+        printf("     %sa   b   c   d   e   f   g   h%s\n", DIM, RST);
     }
 
     printf("\n");

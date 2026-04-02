@@ -1,7 +1,6 @@
-#ifndef PUZZLE_H
-#define PUZZLE_H
+#pragma once
 
-#include "chess_cli.h"
+#include "common.h"
 
 typedef struct {
     int year;
@@ -17,5 +16,3 @@ PuzzleDay puzzle_current_day(void);
 int puzzle_store_current_potd_index(const PuzzleStore *store, PuzzleDay day);
 int puzzle_stats_has_solved_day(const Stats *stats, PuzzleDay day);
 void puzzle_stats_mark_day_solved(Stats *stats, PuzzleDay day);
-
-#endif

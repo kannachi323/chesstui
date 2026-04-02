@@ -1,5 +1,6 @@
 <img width="1200" height="385" alt="b328e384-9886-4a37-b140-0598c9d2c2e6" src="https://github.com/user-attachments/assets/828f2d37-47fc-4f14-9466-dac14eaf6e0c" />
 
+<<<<<<< HEAD
 <div align="center">
   
 [![Discord](https://img.shields.io/discord/1489013166292734104?logo=discord&label=Discord&logoColor=white&labelColor=black&color=F5F5F5)](https://discord.gg/GqEYhbaM)
@@ -18,6 +19,21 @@ chess-cli lets you play chess directly in your terminal. Compete against yoursel
 
 ## Installation
 
+=======
+A terminal chess puzzle trainer built in C, powered by the [Lichess puzzle database](https://database.lichess.org/#puzzles). Sharpen your tactics with over 3 million puzzles ranging from beginner to grandmaster level — all without leaving the command line.
+
+Work through a daily puzzle, grind random puzzles by rating band, and track your progress over time with built-in stats and leaderboards. Puzzle packs are split by rating so you can target exactly the difficulty you want.
+
+**Coming soon:** Claude bot integration — pit LLM agents against puzzles and watch how AI reasons through tactics in real time.
+
+<div align="center">
+<pre>
+╔══════════════════════════════════════╗
+║      ♟  c h e s s - c l i  ♟         ║
+╚══════════════════════════════════════╝
+</pre>
+</div>
+>>>>>>> da238aa (fixing stats)
 
 ## Requirements
 

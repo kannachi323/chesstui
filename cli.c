@@ -23,16 +23,14 @@ void cli_wait_for_enter(void) {
     }
 }
 
-static int read_prompt_input(char *input, size_t inputsz,
-                             char *normalized, size_t normalized_sz) {
+static int read_prompt_input(char *input, size_t inputsz) {
     if (!fgets(input, (int)inputsz, stdin)) {
         return 0;
     }
 
     char *answer = trim(input);
-    normalize_command(normalized, normalized_sz, answer);
 
-    if (is_ignorable_input(answer) || normalized[0] == '\0') {
+    if (is_ignorable_input(answer) || answer[0] == '\0') {
         return -1;
     }
 
@@ -74,13 +72,13 @@ void cli_print_menu(const Stats *stats, int solved_count, int total_puzzles) {
 void cli_print_stats(const Stats *stats, int solved_count, int total_puzzles) {
     printf("\n");
     printf("  %s── Stats ──────────────────────────────%s\n\n", FG_TITLE, RST);
-    printf("    Current streak:    %s%d%s\n", BOLD, stats->current_streak, RST);
-    printf("    Best streak:       %s%d%s\n", BOLD, stats->best_streak, RST);
-    printf("    Puzzles solved:    %s%d/%d%s\n", BOLD, solved_count, total_puzzles, RST);
-    printf("    Solve events:      %s%d%s\n", BOLD, stats->total_solved, RST);
-    printf("    Puzzles attempted: %s%d%s\n", BOLD, stats->total_attempted, RST);
+    printf("    Current streak:  %s%d%s\n", BOLD, stats->current_streak, RST);
+    printf("    Best streak:     %s%d%s\n", BOLD, stats->best_streak, RST);
+    printf("    Puzzles solved:  %s%d/%d%s\n", BOLD, solved_count, total_puzzles, RST);
+    printf("    Total solved:    %s%d%s\n", BOLD, stats->total_solved, RST);
+    printf("    Total attempts:  %s%d%s\n", BOLD, stats->total_attempted, RST);
     if (stats->total_attempted > 0) {
-        printf("    Accuracy:          %s%.0f%%%s\n", BOLD,
+        printf("    Accuracy:        %s%.0f%%%s\n", BOLD,
                100.0 * stats->total_solved / stats->total_attempted, RST);
     }
     printf("\n");
@@ -119,7 +117,6 @@ int cli_play_puzzle(int puzzle_idx, const Puzzle *puzzle, Stats *stats,
     for (int step = 0, i = expected_idx; i < nmoves; i += 2, step++) {
         const char *expected = move_list[i];
         char input[64];
-        char normalized[16];
 
         for (;;) {
             cli_clear_screen();
@@ -143,8 +140,7 @@ int cli_play_puzzle(int puzzle_idx, const Puzzle *puzzle, Stats *stats,
                    BOLD, RST, FG_DIM, RST);
             fflush(stdout);
 
-            int read_status = read_prompt_input(input, sizeof(input),
-                                                normalized, sizeof(normalized));
+            int read_status = read_prompt_input(input, sizeof(input));
             if (read_status == 0) {
                 return 0;
             }
@@ -154,11 +150,11 @@ int cli_play_puzzle(int puzzle_idx, const Puzzle *puzzle, Stats *stats,
 
             char *answer = trim(input);
 
-            if (strcmp(normalized, "q") == 0 || strcmp(normalized, "quit") == 0) {
+            if (strcmp(answer, "q") == 0 || strcmp(answer, "quit") == 0) {
                 return 0;
             }
 
-            if (strcmp(normalized, "hint") == 0) {
+            if (strcmp(answer, "hint") == 0) {
                 printf("  %sHint:%s the piece starts on %c%c\n",
                        FG_HINT, RST, expected[0], expected[1]);
                 printf("  %sPress Enter to try again...%s", FG_DIM, RST);

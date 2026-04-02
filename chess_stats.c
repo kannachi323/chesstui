@@ -3,7 +3,7 @@
 
 #include "chess_stats.h"
 
-static const char *stats_path(void) {
+static const char* stats_path(void) {
     static char path[512];
     const char *home = getenv("HOME");
 

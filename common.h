@@ -1,5 +1,4 @@
-#ifndef CHESS_CLI_H
-#define CHESS_CLI_H
+#pragma once
 
 #include <stddef.h>
 
@@ -27,6 +26,19 @@
 #define FG_DIM "\033[38;5;245m"
 #define FG_TITLE "\033[38;5;75m"
 
+#define PIECE_W_KING   "\u2654"
+#define PIECE_W_QUEEN  "\u2655"
+#define PIECE_W_ROOK   "\u2656"
+#define PIECE_W_BISHOP "\u2657"
+#define PIECE_W_KNIGHT "\u2658"
+#define PIECE_W_PAWN   "\u2659"
+#define PIECE_B_KING   "\u265A"
+#define PIECE_B_QUEEN  "\u265B"
+#define PIECE_B_ROOK   "\u265C"
+#define PIECE_B_BISHOP "\u265D"
+#define PIECE_B_KNIGHT "\u265E"
+#define PIECE_B_PAWN   "\u265F"
+
 typedef struct {
     char id[16];
     char fen[FEN_MAX];
@@ -51,5 +63,3 @@ typedef struct {
     int random_order[MAX_PUZZLES];
     int random_order_pos;
 } PuzzleStore;
-
-#endif
