@@ -1,7 +1,6 @@
 *.o
 *.exe
-**/chess_cli
-bin/
+build/
 **/packs
 **/.csv
 **/*.zst

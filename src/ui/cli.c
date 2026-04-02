@@ -9,7 +9,7 @@
 #include "util.h"
 
 void cli_clear_screen(void) {
-    printf("\033[2J\033[H");
+    printf("\033[H\033[J");
     fflush(stdout);
 }
 
