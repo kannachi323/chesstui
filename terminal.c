@@ -19,6 +19,13 @@ static void disable_mouse_tracking(void) {
     fflush(stdout);
 }
 
+static void signal_handler(int sig) {
+    terminal_restore();
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+
 void terminal_restore(void) {
     if (!g_terminal_active) {
         return;
@@ -31,12 +38,6 @@ void terminal_restore(void) {
         fflush(stdout);
         g_alt_screen = 0;
     }
-}
-
-static void signal_handler(int sig) {
-    terminal_restore();
-    signal(sig, SIG_DFL);
-    raise(sig);
 }
 
 void terminal_setup(void) {

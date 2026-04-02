@@ -120,3 +120,4 @@ int main(int argc, char **argv) {
     printf("\n  %sGoodbye!%s\n\n", FG_DIM, RST);
     return 0;
 }
+

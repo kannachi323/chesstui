@@ -1,7 +1,5 @@
-#ifndef TERMINAL_H
-#define TERMINAL_H
+#pragma once
 
 void terminal_setup(void);
 void terminal_restore(void);
 
-#endif
