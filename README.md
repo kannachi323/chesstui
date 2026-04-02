@@ -1,107 +1,74 @@
-<img width="1200" height="385" alt="b328e384-9886-4a37-b140-0598c9d2c2e6" src="https://github.com/user-attachments/assets/828f2d37-47fc-4f14-9466-dac14eaf6e0c" />
+<img width="1200" height="300" alt="image" src="https://github.com/user-attachments/assets/1bee2b40-32bd-4e8c-9623-0235f4b3a65a" />
 
-<<<<<<< HEAD
 <div align="center">
   
 [![Discord](https://img.shields.io/discord/1489013166292734104?logo=discord&label=Discord&logoColor=white&labelColor=black&color=F5F5F5)](https://discord.gg/GqEYhbaM)
 [![release](https://img.shields.io/github/v/release/kannachi323/chess-cli?style=flat&labelColor=black&color=F5F5F5)](https://github.com/kannachi323/chess-cli/releases/latest)
-
 </div>
 
-chess-cli lets you play chess directly in your terminal. Compete against yourself, track your improvement over time, and work through thousands of 
-  puzzles without ever leaving the command line.                                                                                                     
+`chess-cli` lets you play chess directly in your terminal. Play against your friends online or challenge yourself against Stockfish and other strong AI opponents. Work through millions of puzzles to sharpen your tactical vision.                                                                      
                                                                                                                                                      
-  ## Features                                                                                                                                        
-  - Puzzles from the [Lichess puzzle database](https://database.lichess.org/#puzzles) (3M+ puzzles)
-  - Daily puzzle of the day                                                                                                                          
-  - Random puzzles by rating band (beginner to expert)                                                                                               
-  - Stat tracking and leaderboards                                        
+## Features      
+Check out [Features](./FEATURES.md) for a full list of features.
+
+- Play online games connected to your Lichess account. 
+- Puzzles from the [Lichess puzzle database](https://database.lichess.org/#puzzles) (5.8M+ puzzles)
+- Daily puzzle of the day                                                                                                                          
+- Random puzzles by rating band (0-2500+ elo)                                                                                               
+- Stat tracking and leaderboards (**coming soon**)
+
 
 ## Installation
+`chess-cli` is designed to stay simple and lightweight. If you want the fastest setup, use the quick install command.
+If you prefer compiling it yourself, you can build it from source with CMake. Be sure to also check out [Getting Puzzles](#getting-puzzles) for more information on downloading puzzles.
 
-=======
-A terminal chess puzzle trainer built in C, powered by the [Lichess puzzle database](https://database.lichess.org/#puzzles). Sharpen your tactics with over 3 million puzzles ranging from beginner to grandmaster level — all without leaving the command line.
-
-Work through a daily puzzle, grind random puzzles by rating band, and track your progress over time with built-in stats and leaderboards. Puzzle packs are split by rating so you can target exactly the difficulty you want.
-
-**Coming soon:** Claude bot integration — pit LLM agents against puzzles and watch how AI reasons through tactics in real time.
-
-<div align="center">
-<pre>
-╔══════════════════════════════════════╗
-║      ♟  c h e s s - c l i  ♟         ║
-╚══════════════════════════════════════╝
-</pre>
-</div>
->>>>>>> da238aa (fixing stats)
-
-## Requirements
-
-- `C compiler` (gcc, clang, msvc)
-- `CURL` (downloading puzzle packs)
-- `zstd` (for decompressing puzzle packs)
-
-## Build
-
+### Quick install
 ```sh
+curl -fsSL https://raw.githubusercontent.com/kannachi323/chess-cli/main/install.sh | sh
+```
+
+### Install from package
+Pre-built packages for Windows, macOS, and Linux are found on the [Releases](https://github.com/kannachi323/chess-cli/releases) page.
+
+You can also install via package managers. See [INSTALL.md](./INSTALL.md) for details.
+
+### Build from source
+> **Note**: You will need a C compiler (`gcc`, `clang`, or `msvc`), `curl`, `zstd`
+```sh
+git clone https://github.com/kannachi323/chess-cli
+cd chess-cli
+mkdir build && cd build
+cmake ..
 make
 ```
+> **Note**: If you want to execute `chess-cli` from any directory, you must properly add to your environment `$PATH`.
 
 ## Getting Puzzles
+In order to play puzzles, you will download puzzles and store them locally at `~/.chess-cli/puzzles`. Be sure to check out the [Discord](https://discord.gg/hyFpBQkp) for
+updates on puzzle packs. They will be always be updated with the [Lichess puzzle database](https://database.lichess.org/#puzzles)
 
-You need a `puzzles.csv` file in the same directory as the binary. There are two ways to get one.
+The puzzles are split into different skill levels using the [Lichess elo system](https://lichess.org/page/rating-systems#lichess):
 
-### Option 1 — Full database (3M+ puzzles)
+| Pack | Rating |
+|------|--------|
+| `puzzles-0-1000.csv.zst` | 0-1000 |
+| `puzzles-1000-1500.csv.zst` | 1000-1500 |
+| `puzzles-1500-2000.csv.zst` | 1500-2000 |
+| `puzzles-2000-2500.csv.zst` | 2000-2500 |
+| `puzzles-2500-plus.csv.zst` | 2500+ |
 
-Downloads the complete Lichess puzzle database (~300 MB compressed):
-
+Download the puzzles file using the following format `curl -LO https://github.com/kannachi323/chess-cli/releases/download/<version>/puzzles-1000-1500.csv.zst`
+where `<version>` follows the format `vX.X.X`.
 ```sh
-make fetch-puzzles
+# Example: download the intermediate pack
+curl -LO https://github.com/<you>/chess-cli/releases/download/v1.0.0/puzzles-1000-1500.csv.zst
+zstd -d puzzles-1000-1500.csv.zst -o puzzles-1000-1500.csv
+mkdir ~/.chess-cli/puzzles
+mv puzzles-1000-1500.csv ~/.chess-cli/puzzles
 ```
-
-This produces a `puzzles.csv` in the current directory.
-
-### Option 2 — Rating-based packs (recommended)
-
-After fetching the full database, split it into smaller packs by rating:
-
-```sh
-make split-puzzles
-```
-
-This creates a `packs/` directory with five files:
-
-| File | Rating range |
-|------|-------------|
-| `puzzles-0-1000.csv.zst` | Beginner |
-| `puzzles-1000-1500.csv.zst` | Intermediate |
-| `puzzles-1500-2000.csv.zst` | Club player |
-| `puzzles-2000-2500.csv.zst` | Advanced |
-| `puzzles-2500-plus.csv.zst` | Expert |
-
-Decompress the pack you want:
-
-```sh
-zstd -d packs/puzzles-1000-1500.csv.zst -o puzzles.csv
-```
-
-## Run
-
+## Usage
+Run from the directory containing the `chess-cli` binary, or add it to your `$PATH`
 ```sh
 ./chess-cli
 ```
-
-To load a specific puzzle file:
-
-```sh
-./chess-cli path/to/puzzles.csv
-```
-
-## Menu
-
-| Key | Action |
-|-----|--------|
-| `1` | Puzzle of the Day |
-| `2` | Random puzzle |
-| `3` | View stats |
-| `q` | Quit |
+That's it. Everything else will be guided through prompts and menu selection.
