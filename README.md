@@ -71,4 +71,26 @@ Run from the directory containing the `chess-cli` binary, or add it to your `$PA
 ```sh
 ./chess-cli
 ```
+<<<<<<< HEAD
 That's it. Everything else will be guided through prompts and menu selection.
+=======
+
+To load a specific puzzle file:
+
+```sh
+./chess-cli path/to/puzzles.csv
+```
+
+## Menu
+
+| Key | Action |
+|-----|--------|
+| `1` | Puzzle of the Day |
+| `2` | Random puzzle |
+| `3` | View stats |
+| `q` | Quit |
+
+
+
+coming soon
+>>>>>>> ba7d0a0 (readme)
