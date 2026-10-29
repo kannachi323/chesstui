@@ -8,6 +8,7 @@ import (
 
 	"github.com/kannachi323/chesstui/internal/auth"
 	"github.com/kannachi323/chesstui/internal/config"
+	"github.com/kannachi323/chesstui/internal/engine"
 	"github.com/kannachi323/chesstui/internal/lichess"
 	"github.com/kannachi323/chesstui/internal/storage"
 )
@@ -22,6 +23,41 @@ type Session struct {
 	mu      sync.RWMutex
 	client  *lichess.Client
 	account *lichess.Account
+
+	engineMu   sync.Mutex
+	engine     *engine.Engine
+	engineOpts engine.Options
+}
+
+// Engine returns the shared UCI engine, starting over when the engine
+// settings changed. It fails with engine.ErrNotFound when none is installed.
+func (s *Session) Engine() (*engine.Engine, error) {
+	s.engineMu.Lock()
+	defer s.engineMu.Unlock()
+	opts := engine.Options{Path: s.Config.EnginePath, Threads: s.Config.EngineThreads, HashMB: s.Config.EngineHashMB}
+	if s.engine != nil && opts == s.engineOpts {
+		return s.engine, nil
+	}
+	if s.engine != nil {
+		go s.engine.Close()
+		s.engine = nil
+	}
+	created, err := engine.New(opts)
+	if err != nil {
+		return nil, err
+	}
+	s.engine, s.engineOpts = created, opts
+	return created, nil
+}
+
+// Close stops background processes such as the engine.
+func (s *Session) Close() {
+	s.engineMu.Lock()
+	defer s.engineMu.Unlock()
+	if s.engine != nil {
+		s.engine.Close()
+		s.engine = nil
+	}
 }
 
 func New(cfg config.Config, paths config.Paths, store *storage.Store, tokens auth.TokenStore) *Session {

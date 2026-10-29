@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +34,36 @@ var tvDelay time.Duration
 
 // afterUpdate, when set, sees the model after every message drive handles.
 var afterUpdate func(Model)
+
+var (
+	fakeEngineOnce sync.Once
+	fakeEnginePath string
+	fakeEngineErr  error
+)
+
+// fakeEngine builds testdata/fakeengine once per test run and returns it.
+func fakeEngine(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("fake engine build is POSIX-only")
+	}
+	fakeEngineOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "chesstui-fakeengine")
+		if err != nil {
+			fakeEngineErr = err
+			return
+		}
+		fakeEnginePath = filepath.Join(dir, "fakefish")
+		out, err := exec.Command("go", "build", "-o", fakeEnginePath, "./testdata/fakeengine").CombinedOutput()
+		if err != nil {
+			fakeEngineErr = fmt.Errorf("%v: %s", err, out)
+		}
+	})
+	if fakeEngineErr != nil {
+		t.Fatal(fakeEngineErr)
+	}
+	return fakeEnginePath
+}
 
 type staticTokens struct{ token string }
 
@@ -141,7 +174,7 @@ func run(cmd tea.Cmd) []tea.Msg {
 			return nil
 		}
 		return []tea.Msg{msg}
-	case <-time.After(250 * time.Millisecond):
+	case <-time.After(700 * time.Millisecond):
 		return nil
 	}
 }
@@ -155,6 +188,7 @@ func drive(m Model, msgs ...tea.Msg) Model {
 		queue = queue[1:]
 		updated, cmd := m.Update(msg)
 		m = updated.(Model)
+		_ = m.render() // like the real loop: a frame is drawn after each update
 		if afterUpdate != nil {
 			afterUpdate(m)
 		}
@@ -164,7 +198,7 @@ func drive(m Model, msgs ...tea.Msg) Model {
 }
 
 func key(text string) tea.Msg {
-	special := map[string]rune{"enter": tea.KeyEnter, "up": tea.KeyUp, "down": tea.KeyDown, "left": tea.KeyLeft, "right": tea.KeyRight, "space": tea.KeySpace, "end": tea.KeyEnd}
+	special := map[string]rune{"enter": tea.KeyEnter, "up": tea.KeyUp, "down": tea.KeyDown, "left": tea.KeyLeft, "right": tea.KeyRight, "space": tea.KeySpace, "end": tea.KeyEnd, "esc": tea.KeyEscape}
 	if code, ok := special[text]; ok {
 		return tea.KeyPressMsg(tea.Key{Code: code})
 	}
@@ -177,8 +211,9 @@ type scene struct {
 	width, height int
 	light         bool
 	token         string
-	keys          []string
+	keys          []string // "paste:<file>" pastes a testdata file
 	want          []string
+	engine        bool // use the fake UCI engine
 	card          bool // also render a tighter 84x26 frame for the website
 }
 
@@ -188,17 +223,29 @@ func TestScreenshots(t *testing.T) {
 	}
 	server := fakeLichess(t)
 	scenes := []scene{
-		{name: "home", width: 100, height: 30, want: []string{"Play", "Watch", "guest"}},
-		{name: "watch", width: 120, height: 36, keys: []string{"3"}, want: []string{"DrNykterstein", "live"}},
-		{name: "puzzle", card: true, width: 110, height: 32, keys: []string{"4", "space", "enter"}, want: []string{"Puzzle", "to move"}},
-		{name: "play", card: true, width: 120, height: 36, token: "lio_fake", keys: []string{"2", "enter", "N", "c", "3"}, want: []string{"Lichess AI · 5", "kannachi323", "Nc3"}},
-		{name: "study", card: true, width: 120, height: 36, keys: []string{"5", "D", "r", "N", "y", "k", "t", "e", "r", "s", "t", "e", "i", "n", "enter", "enter", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"}, want: []string{"move 12 of", "DrNykterstein"}},
+		{name: "home", width: 100, height: 30, want: []string{"Play", "Analyze", "Read"}},
+		{name: "play", card: true, width: 120, height: 36, engine: true,
+			keys: []string{"2", "down", "down", "right", "up", "up", "enter", "e", "4", "enter", "N", "f", "3", "enter", "B", "c", "4", "enter"},
+			want: []string{"FakeFish", "saved to your library"}},
+		{name: "analyze", card: true, width: 120, height: 36, engine: true,
+			keys: []string{"3", "paste:opera.pgn", "r", "end", "left", "left", "space"},
+			want: []string{"Paul Morphy", "Qb8+", "%"}},
+		{name: "analyze-library", width: 100, height: 30, engine: true,
+			keys: []string{"3", "paste:opera.pgn", "r", "esc"},
+			want: []string{"Paul Morphy", "reviewed"}},
+		{name: "read", card: true, width: 130, height: 38, keys: append([]string{"4", "enter"}, "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"),
+			want: []string{"Paul Morphy", "13 / 65"}},
+		{name: "read-split-60x30", width: 60, height: 30, keys: []string{"4", "enter", "right", "right", "right", "b"},
+			want: []string{"Philidor"}},
 		{name: "learn-light", card: true, width: 110, height: 32, light: true, keys: []string{"6", "j", "j", "j"}, want: []string{"En passant"}},
-		{name: "help", width: 100, height: 30, keys: []string{"4", "?"}, want: []string{"Everywhere", "hint"}},
-		{name: "compact-80x24", width: 80, height: 24, keys: []string{"4"}, want: []string{"Puzzle"}},
-		{name: "play-menu-80x24", width: 80, height: 24, keys: []string{"2"}, want: []string{"Lichess AI", "Color", "not installed"}},
-		{name: "settings", width: 100, height: 30, keys: []string{"7"}, want: []string{"Settings", "Stockfish"}},
-		{name: "wide-180x50", width: 180, height: 50, keys: []string{"4"}, want: []string{"Puzzle"}},
+		{name: "puzzle", width: 110, height: 32, keys: []string{"5", "space", "enter"}, want: []string{"Puzzle", "to move"}},
+		{name: "help", width: 100, height: 30, keys: []string{"3", "paste:opera.pgn", "?"}, want: []string{"Everywhere", "review"}},
+		{name: "compact-80x24", width: 80, height: 24, engine: true, keys: []string{"3", "paste:opera.pgn", "r", "end"}, want: []string{"Rd8#"}},
+		{name: "play-menu-80x24", width: 80, height: 24, keys: []string{"2"}, want: []string{"New game", "Strength", "no engine found"}},
+		{name: "settings", width: 100, height: 32, keys: []string{"8"}, want: []string{"Settings", "Engine", "Lichess beta"}},
+		{name: "wide-180x50", width: 180, height: 50, keys: []string{"4", "enter", "right", "right"}, want: []string{"Morphy"}},
+		{name: "lichess-tv", width: 120, height: 36, keys: []string{"7"}, want: []string{"DrNykterstein", "live", "beta"}},
+		{name: "lichess-play", width: 120, height: 36, token: "lio_fake", keys: []string{"7", ">", ">", "enter"}, want: []string{"Lichess AI · 5", "kannachi323"}},
 	}
 	for _, base := range scenes {
 		variants := []scene{base}
@@ -216,8 +263,11 @@ func TestScreenshots(t *testing.T) {
 				defer store.Close()
 				cfg := config.Default()
 				cfg.LichessURL = server.URL
-				// Pin "no Stockfish" so shots match on machines that have it.
-				cfg.StockfishPath = filepath.Join(t.TempDir(), "no-stockfish")
+				// Pin the engine so shots match on machines with or without Stockfish.
+				cfg.EnginePath = filepath.Join(t.TempDir(), "no-engine")
+				if sc.engine {
+					cfg.EnginePath = fakeEngine(t)
+				}
 				var tokens interface {
 					Load() (string, error)
 					Save(string) error
@@ -226,7 +276,9 @@ func TestScreenshots(t *testing.T) {
 				if sc.token != "" {
 					tokens = staticTokens{sc.token}
 				}
-				model := New(session.New(cfg, config.Paths{ConfigFile: filepath.Join(t.TempDir(), "config.json"), Database: "~/.local/share/chesstui/chesstui.db"}, store, tokens))
+				current := session.New(cfg, config.Paths{ConfigFile: filepath.Join(t.TempDir(), "config.json"), Database: "~/.local/share/chesstui/chesstui.db", DataDir: t.TempDir()}, store, tokens)
+				defer current.Close()
+				model := New(current)
 				background := tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}}
 				if sc.light {
 					background = tea.BackgroundColorMsg{Color: color.RGBA{0xfa, 0xf9, 0xf6, 0xff}}
@@ -234,6 +286,14 @@ func TestScreenshots(t *testing.T) {
 				model = drive(model, tea.WindowSizeMsg{Width: sc.width, Height: sc.height}, background)
 				model = drive(model, run(model.Init())...)
 				for _, k := range sc.keys {
+					if file, ok := strings.CutPrefix(k, "paste:"); ok {
+						data, err := os.ReadFile(filepath.Join("testdata", file))
+						if err != nil {
+							t.Fatal(err)
+						}
+						model = drive(model, tea.PasteMsg{Content: string(data)})
+						continue
+					}
 					model = drive(model, key(k))
 				}
 				frame := model.render()
@@ -281,7 +341,7 @@ func TestDailyPuzzleSolvesEndToEnd(t *testing.T) {
 	cfg := config.Default()
 	cfg.LichessURL = server.URL
 	model := New(session.New(cfg, config.Paths{}, store, memoryTokens{}))
-	model = drive(model, tea.WindowSizeMsg{Width: 100, Height: 30}, key("4"))
+	model = drive(model, tea.WindowSizeMsg{Width: 100, Height: 30}, key("5"))
 	for i := 0; i < len(daily.Puzzle.Solution); i += 2 {
 		for _, r := range daily.Puzzle.Solution[i] {
 			model = drive(model, key(string(r)))
@@ -297,49 +357,35 @@ func TestDailyPuzzleSolvesEndToEnd(t *testing.T) {
 	}
 }
 
-// TestHeroFrames records the Watch screen as Lichess TV moves arrive, for
+// TestHeroFrames records the reader stepping through the Opera game, for
 // the animated hero on the website. It only runs when writing shots.
 func TestHeroFrames(t *testing.T) {
 	if *shotsDir == "" {
 		t.Skip("run with -shots")
 	}
-	tvDelay = 40 * time.Millisecond
-	defer func() { tvDelay = 0 }()
-	server := fakeLichess(t)
 	store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "hero.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer store.Close()
 	cfg := config.Default()
-	cfg.LichessURL = server.URL
-	model := New(session.New(cfg, config.Paths{}, store, memoryTokens{}))
-	model = drive(model, tea.WindowSizeMsg{Width: 104, Height: 30}, tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}})
-
-	frames, last := []string{}, ""
-	afterUpdate = func(m Model) {
-		frame := m.render()
-		plain := ansi.Strip(frame)
-		if plain != last && strings.Contains(plain, "live ·") {
-			frames = append(frames, frame)
-			last = plain
-		}
-	}
-	defer func() { afterUpdate = nil }()
-	model = drive(model, key("3"))
-	if len(frames) < 20 {
-		t.Fatalf("captured %d frames", len(frames))
-	}
-	frames = frames[len(frames)-16:]
+	cfg.LichessURL = "http://127.0.0.1:1"
+	model := New(session.New(cfg, config.Paths{DataDir: t.TempDir()}, store, memoryTokens{}))
+	model = drive(model, tea.WindowSizeMsg{Width: 120, Height: 32}, tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}})
+	model = drive(model, key("4"), key("enter"))
 	dir := filepath.Join(*shotsDir, "hero")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for i, frame := range frames {
-		svg := termshot.SVG(frame, termshot.Options{Background: "#111214", Foreground: "#e7e4dc"})
+	for i := range 16 {
+		model = drive(model, key("right"))
+		svg := termshot.SVG(model.render(), termshot.Options{Background: "#111214", Foreground: "#e7e4dc"})
 		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("%02d.svg", i)), []byte(svg), 0o644); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if plain := ansi.Strip(model.render()); !strings.Contains(plain, "Morphy") {
+		t.Fatalf("hero frame:\n%s", plain)
 	}
 }
 
@@ -354,7 +400,7 @@ func TestQuitAsksTwiceDuringAnOnlineGame(t *testing.T) {
 	cfg.LichessURL = server.URL
 	model := New(session.New(cfg, config.Paths{}, store, staticTokens{"lio_fake"}))
 	model = drive(model, tea.WindowSizeMsg{Width: 120, Height: 36})
-	model = drive(model, key("2"), key("enter"))
+	model = drive(model, key("7"), key(">"), key(">"), key("enter"))
 	updated, cmd := model.Update(key("q"))
 	model = updated.(Model)
 	if cmd != nil || !strings.Contains(ansi.Strip(model.render()), "press q again") {

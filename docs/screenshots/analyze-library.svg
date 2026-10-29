@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 879 585" width="879" height="585" font-family="'JetBrains Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace" font-size="14">
+<rect width="879" height="585" rx="12" fill="#111214"/>
+<g text-rendering="geometricPrecision">
+<text x="40.60" y="33.43" fill="#e2b55c" font-weight="700" text-anchor="middle">♞</text><text x="53.20" y="33.43" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">chesstui</text><text x="187.60" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Home</text><text x="238.00" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Play</text><text x="288.40" y="33.43" fill="#e2b55c" font-weight="700" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Analyze</text><text x="364.00" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Read</text><text x="414.40" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Puzzles</text><text x="490.00" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Learn</text><text x="548.80" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Lichess</text><text x="624.40" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">Settings</text><text x="788.20" y="33.43" fill="#57554f" text-anchor="middle">○</text><text x="800.80" y="33.43" fill="#57554f" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">guest</text>
+
+
+
+
+
+
+
+
+
+
+
+<text x="86.80" y="251.83" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Analyze</text><text x="170.80" y="251.83" fill="#57554f" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">1 game</text>
+
+<text x="91.00" y="288.23" fill="#e2b55c" font-weight="700" text-anchor="middle">›</text><text x="103.60" y="288.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="92.40" lengthAdjust="spacingAndGlyphs">Paul Morphy</text><text x="208.60" y="288.23" fill="#57554f" text-anchor="middle">–</text><text x="221.20" y="288.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="210.00" lengthAdjust="spacingAndGlyphs">Duke Karl / Count Isouard</text><text x="523.60" y="288.23" fill="#8f8c84" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">1</text><text x="536.20" y="288.23" fill="#8f8c84" text-anchor="middle">–</text><text x="540.40" y="288.23" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">0   </text><text x="599.20" y="288.23" fill="#57554f" xml:space="preserve" textLength="75.60" lengthAdjust="spacingAndGlyphs">reviewed </text><text x="679.00" y="288.23" fill="#57554f" text-anchor="middle">·</text><text x="691.60" y="288.23" fill="#57554f" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">pgn </text><text x="729.40" y="288.23" fill="#57554f" text-anchor="middle">·</text><text x="742.00" y="288.23" fill="#57554f" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">Oct 29</text>
+
+<text x="91.00" y="324.63" fill="#9cc48a" text-anchor="middle">✓</text><text x="103.60" y="324.63" fill="#9cc48a" xml:space="preserve" textLength="134.40" lengthAdjust="spacingAndGlyphs">Review complete </text><text x="242.20" y="324.63" fill="#9cc48a" text-anchor="middle">·</text><text x="254.80" y="324.63" fill="#9cc48a" xml:space="preserve" textLength="210.00" lengthAdjust="spacingAndGlyphs">j k jump between mistakes</text>
+
+
+
+
+
+
+
+
+
+
+
+
+<text x="40.60" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">↑</text><text x="49.00" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">↓</text><text x="61.60" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">select</text><text x="137.20" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">enter</text><text x="187.60" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">open</text><text x="246.40" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">o</text><text x="263.20" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">open PGN</text><text x="355.60" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">n</text><text x="372.40" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="75.60" lengthAdjust="spacingAndGlyphs">new board</text><text x="473.20" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">d</text><text x="490.00" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">delete</text><text x="565.60" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">?</text><text x="582.40" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">help</text>
+</g>
+</svg>

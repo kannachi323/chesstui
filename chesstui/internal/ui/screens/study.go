@@ -3,15 +3,16 @@ package screens
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	chesscore "github.com/kannachi323/chesstui/internal/chess"
 	"github.com/kannachi323/chesstui/internal/domain"
-	"github.com/kannachi323/chesstui/internal/engine"
 	"github.com/kannachi323/chesstui/internal/lichess"
+	"github.com/kannachi323/chesstui/internal/pgn"
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
 )
 
@@ -22,17 +23,21 @@ type studyLoadedMsg struct {
 	err      error
 }
 
-type studyAnalysisMsg struct {
-	gameID   string
-	ply      int
-	analysis engine.Analysis
-	err      error
+type studyImportedMsg struct {
+	gameID string
+	err    error
+}
+
+type studyBookMsg struct {
+	path string
+	err  error
 }
 
 const studyGames, studyStudies = 0, 1
 
-// Study browses any public Lichess user's recent games and studies, replays
-// a finished game move by move, and analyses positions with local Stockfish.
+// Study browses any public Lichess player's games and studies. A game is
+// copied into the local library and opened in Analyze; a study opens as a
+// book in Read.
 type Study struct {
 	ctx       Context
 	activated bool
@@ -44,13 +49,6 @@ type Study struct {
 	studies   []lichess.Study
 	loading   bool
 	note      note
-
-	game     *lichess.ExportedGame
-	position *chesscore.Position
-	san      []string
-	ply      int
-	analysis map[int]engine.Analysis
-	thinking bool
 }
 
 func NewStudy(ctx Context) *Study { return &Study{ctx: ctx} }
@@ -72,11 +70,11 @@ func (s *Study) Activate() tea.Cmd {
 
 func (s *Study) load(username string) tea.Cmd {
 	s.loading, s.note = true, busyNote("Loading "+username+"’s games")
-	client, store := s.ctx.Session.Client(), s.ctx.Session.Store
+	client := s.ctx.Session.Client()
 	return func() tea.Msg {
 		ctx := context.Background()
 		message := studyLoadedMsg{username: username}
-		message.err = client.RecentGames(ctx, username, 20, func(game lichess.ExportedGame) error {
+		message.err = client.RecentGames(ctx, username, 30, func(game lichess.ExportedGame) error {
 			message.games = append(message.games, game)
 			return nil
 		})
@@ -85,18 +83,6 @@ func (s *Study) load(username string) tea.Cmd {
 				message.studies = append(message.studies, study)
 				return nil
 			})
-		}
-		for _, game := range message.games {
-			stored := domain.Game{
-				ID: game.ID, Source: "lichess", Variant: game.Variant, Moves: strings.Fields(game.Moves),
-				White:  domain.Player{ID: game.Players.White.User.ID, Name: game.Players.White.User.Name, Rating: game.Players.White.Rating},
-				Black:  domain.Player{ID: game.Players.Black.User.ID, Name: game.Players.Black.User.Name, Rating: game.Players.Black.Rating},
-				Status: game.Status, Winner: game.Winner, Result: game.Status, PGN: game.PGN,
-			}
-			if game.CreatedAt > 0 {
-				stored.PlayedAt = time.UnixMilli(game.CreatedAt)
-			}
-			_ = store.UpsertGame(ctx, stored) // the cache is a convenience
 		}
 		return message
 	}
@@ -121,30 +107,27 @@ func (s *Study) Update(msg tea.Msg) tea.Cmd {
 			s.note = plainNote(msg.username + " has no public games yet")
 		}
 		return nil
-	case studyAnalysisMsg:
-		s.thinking = false
+	case studyImportedMsg:
+		s.loading = false
 		if msg.err != nil {
 			s.note = errNote(msg.err)
 			return nil
 		}
-		if s.game != nil && msg.gameID == s.game.ID {
-			s.analysis[msg.ply] = msg.analysis
-			s.note = note{}
-			best := msg.analysis
-			_ = s.ctx.Session.Store.UpsertAnalysis(context.Background(), domain.Analysis{
-				GameID: msg.gameID, Ply: msg.ply, Depth: best.Depth, Score: best.ScoreCP, Mate: best.Mate, PV: best.PV,
-			})
-		}
-		return nil
-	case browserOpenedMsg:
+		s.note = okNote("Copied to your library")
+		id := msg.gameID
+		return func() tea.Msg { return OpenAnalyzeMsg{GameID: id} }
+	case studyBookMsg:
+		s.loading = false
 		if msg.err != nil {
 			s.note = errNote(msg.err)
+			return nil
 		}
-		return nil
+		s.note = okNote("Saved as a book")
+		path := msg.path
+		return func() tea.Msg { return OpenBookMsg{Path: path} }
 	}
-
 	key, ok := keyString(msg)
-	if !ok {
+	if !ok || s.loading {
 		return nil
 	}
 	if s.prompt != nil {
@@ -156,18 +139,15 @@ func (s *Study) Update(msg tea.Msg) tea.Cmd {
 			if name == "" {
 				return nil
 			}
-			s.prompt, s.game, s.position = nil, nil, nil
+			s.prompt = nil
 			return s.load(name)
 		default:
 			s.prompt.handle(key)
 		}
 		return nil
 	}
-	if s.game != nil {
-		return s.updateReplay(key)
-	}
 	switch key {
-	case "]", "[", "tab", "shift+tab":
+	case "]", "[":
 		s.section = 1 - s.section
 	case "up", "k":
 		s.selected[s.section] = max(0, s.selected[s.section]-1)
@@ -176,36 +156,13 @@ func (s *Study) Update(msg tea.Msg) tea.Cmd {
 	case "u", "/":
 		s.prompt = &textInput{allowed: usernameChar}
 	case "r":
-		if s.username != "" && !s.loading {
+		if s.username != "" {
 			return s.load(s.username)
 		}
-	case "enter", "right", "l":
-		return s.open()
-	}
-	return nil
-}
-
-func (s *Study) updateReplay(key string) tea.Cmd {
-	last := s.position.Ply()
-	switch key {
-	case "left", "h":
-		s.ply = max(0, s.ply-1)
-	case "right", "l":
-		s.ply = min(last, s.ply+1)
-	case "up", "k":
-		s.ply = max(0, s.ply-10)
-	case "down", "j":
-		s.ply = min(last, s.ply+10)
-	case "home", "0":
-		s.ply = 0
-	case "end", "G":
-		s.ply = last
-	case "a":
-		return s.analyze()
 	case "o":
-		return openURL(strings.TrimRight(s.ctx.Session.Config.LichessURL, "/") + "/" + s.game.ID)
-	case "esc", "backspace", "q":
-		s.game, s.position = nil, nil
+		return s.openInBrowser()
+	case "enter":
+		return s.importSelected()
 	}
 	return nil
 }
@@ -217,70 +174,112 @@ func (s *Study) count() int {
 	return len(s.studies)
 }
 
-func (s *Study) open() tea.Cmd {
+func (s *Study) openInBrowser() tea.Cmd {
+	base := strings.TrimRight(s.ctx.Session.Config.LichessURL, "/")
 	index := s.selected[s.section]
+	if s.section == studyStudies && index < len(s.studies) {
+		return openURL(base + "/study/" + s.studies[index].ID)
+	}
+	if s.section == studyGames && index < len(s.games) {
+		return openURL(base + "/" + s.games[index].ID)
+	}
+	return nil
+}
+
+// importSelected copies a game into the library (and opens it in Analyze),
+// or downloads a study's PGN into the books folder (and opens it in Read).
+func (s *Study) importSelected() tea.Cmd {
+	index := s.selected[s.section]
+	store, client := s.ctx.Session.Store, s.ctx.Session.Client()
 	if s.section == studyStudies {
 		if index >= len(s.studies) {
 			return nil
 		}
-		return openURL(strings.TrimRight(s.ctx.Session.Config.LichessURL, "/") + "/study/" + s.studies[index].ID)
+		study := s.studies[index]
+		dir := filepath.Join(s.ctx.Session.Paths.DataDir, "books")
+		s.loading, s.note = true, busyNote("Downloading "+study.Name)
+		return func() tea.Msg {
+			text, err := client.ExportStudyPGN(context.Background(), study.ID)
+			if err != nil {
+				return studyBookMsg{err: err}
+			}
+			if err := os.MkdirAll(dir, 0o700); err != nil {
+				return studyBookMsg{err: err}
+			}
+			path := filepath.Join(dir, slug(study.Name)+"-"+study.ID+".pgn")
+			if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+				return studyBookMsg{err: err}
+			}
+			return studyBookMsg{path: path}
+		}
 	}
 	if index >= len(s.games) {
 		return nil
 	}
 	game := s.games[index]
-	position, err := chesscore.NewPosition("")
-	if err == nil {
-		err = position.ApplyNotation(game.Moves)
-	}
-	if err != nil || game.Variant != "standard" && game.Variant != "" {
-		s.note = badNote("Replay supports standard chess only")
+	if game.Variant != "" && game.Variant != "standard" {
+		s.note = badNote("Only standard chess can be analysed")
 		return nil
 	}
-	s.game, s.position, s.ply, s.san = &game, position, 0, position.SANMoves()
-	s.analysis, s.note = map[int]engine.Analysis{}, note{}
-	return nil
+	s.loading = true
+	return func() tea.Msg {
+		text := game.PGN
+		if strings.TrimSpace(text) == "" {
+			text = game.Moves + " *"
+		}
+		parsed, err := pgn.Parse(text)
+		if err != nil {
+			return studyImportedMsg{err: err}
+		}
+		if parsed[0].Err != nil {
+			return studyImportedMsg{err: parsed[0].Err}
+		}
+		record := domain.Game{
+			ID: "lichess-" + game.ID, Source: "lichess", Variant: "standard", Moves: lastNode(parsed[0]).Line(),
+			White:  domain.Player{ID: game.Players.White.User.ID, Name: firstNonEmpty(game.Players.White.User.Name, "Anonymous"), Rating: game.Players.White.Rating},
+			Black:  domain.Player{ID: game.Players.Black.User.ID, Name: firstNonEmpty(game.Players.Black.User.Name, "Anonymous"), Rating: game.Players.Black.Rating},
+			Result: parsed[0].Result, PGN: parsed[0].String(),
+		}
+		if game.CreatedAt > 0 {
+			record.PlayedAt = time.UnixMilli(game.CreatedAt)
+		}
+		return studyImportedMsg{gameID: record.ID, err: store.UpsertGame(context.Background(), record)}
+	}
 }
 
-func (s *Study) analyze() tea.Cmd {
-	if s.thinking {
-		return nil
+func lastNode(game *pgn.Game) *pgn.Node {
+	node := game.Root
+	for len(node.Children) > 0 {
+		node = node.Children[0]
 	}
-	position, err := s.position.AtPly(s.ply)
-	if err != nil {
-		s.note = errNote(err)
-		return nil
-	}
-	analyzer, err := engine.NewStockfish(s.ctx.Session.Config.StockfishPath)
-	if err != nil {
-		s.note = errNote(err)
-		return nil
-	}
-	s.thinking, s.note = true, busyNote("Stockfish is thinking")
-	fen, depth, ply, id := position.FEN(), s.ctx.Session.Config.AnalysisDepth, s.ply, s.game.ID
-	white := position.Turn() == chesscore.White
-	return func() tea.Msg {
-		analysis, err := analyzer.Analyze(context.Background(), fen, depth)
-		// UCI scores are from the side to move; show them from White's view.
-		if !white {
-			analysis.ScoreCP, analysis.Mate = -analysis.ScoreCP, -analysis.Mate
+	return node
+}
+
+func slug(text string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(text) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case b.Len() > 0 && !strings.HasSuffix(b.String(), "-"):
+			b.WriteByte('-')
 		}
-		return studyAnalysisMsg{gameID: id, ply: ply, analysis: analysis, err: err}
+		if b.Len() >= 40 {
+			break
+		}
 	}
+	return strings.Trim(b.String(), "-")
 }
 
 func (s *Study) View(width, height int) string {
 	t := s.ctx.Theme
 	if s.prompt != nil {
-		lines := []string{t.Title().Render("Open a Lichess library"), "", s.ctx.field("username", *s.prompt), "",
+		lines := []string{t.Title().Render("Open a player’s games"), "", s.ctx.field("Lichess username", *s.prompt), "",
 			t.Faint().Render("any public player · try DrNykterstein or penguingim1")}
 		if s.note.text != "" {
 			lines = append(lines, "", s.ctx.note(s.note))
 		}
 		return strings.Join(lines, "\n")
-	}
-	if s.game != nil {
-		return s.replayView(width, height)
 	}
 	if s.username == "" {
 		if s.note.text != "" {
@@ -343,95 +342,17 @@ func (s *Study) gameRow(game lichess.ExportedGame, width int, selected bool) str
 	return padRight(padRight(players, max(20, width-26))+t.Muted().Render(result), max(26, width-17)) + t.Faint().Render(meta)
 }
 
-func (s *Study) replayView(width, height int) string {
-	position, err := s.position.AtPly(s.ply)
-	if err != nil {
-		return s.ctx.note(errNote(err))
-	}
-	last := ""
-	if s.ply > 0 {
-		last = s.position.Moves()[s.ply-1]
-	}
-	board := widgets.Board{Theme: *s.ctx.Theme, Glyphs: s.ctx.Session.Config.Glyphs, LastMove: last}
-	render := func(b widgets.Board) string { return b.Render(position) }
-	return boardAndSide(board, render, func(w int) string { return s.replaySide(w, height) }, s.replayCompact, width, height)
-}
-
-func (s *Study) replaySide(width, height int) string {
-	t := s.ctx.Theme
-	white, black := s.game.Players.White, s.game.Players.Black
-	lines := []string{
-		s.ctx.playerLine(false, firstNonEmpty(black.User.Name, "Black"), black.Rating, "", false, width),
-		"",
-		s.ctx.moveList(s.san, s.ply-1, max(1, height-11), 1, false),
-		"",
-		s.ctx.playerLine(true, firstNonEmpty(white.User.Name, "White"), white.Rating, "", false, width),
-		"",
-		t.Faint().Render(fmt.Sprintf("move %d of %d · %s", (s.ply+1)/2, (len(s.san)+1)/2, s.game.Status)),
-	}
-	lines = append(lines, s.evalLines(width)...)
-	if s.note.text != "" {
-		lines = append(lines, s.ctx.note(s.note))
-	}
-	return strings.Join(lines, "\n")
-}
-
-func (s *Study) replayCompact(width int) string {
-	lines := []string{s.ctx.Theme.Faint().Render(fmt.Sprintf("move %d of %d", (s.ply+1)/2, (len(s.san)+1)/2))}
-	lines = append(lines, s.evalLines(width)...)
-	return strings.Join(lines, "\n")
-}
-
-// evalLines draws a horizontal evaluation bar and the engine's line.
-func (s *Study) evalLines(width int) []string {
-	analysis, ok := s.analysis[s.ply]
-	if !ok {
-		return nil
-	}
-	t := s.ctx.Theme
-	barWidth := max(10, min(30, width-8))
-	share := 0.5
-	switch {
-	case analysis.Mate > 0:
-		share = 1
-	case analysis.Mate < 0:
-		share = 0
-	default:
-		share = 0.5 + float64(max(-600, min(600, analysis.ScoreCP)))/1200
-	}
-	filled := int(share * float64(barWidth))
-	bar := lipgloss.NewStyle().Foreground(t.WhitePiece).Render(strings.Repeat("█", filled)) +
-		lipgloss.NewStyle().Foreground(t.FaintColor).Render(strings.Repeat("█", barWidth-filled))
-	pv := []string{}
-	if position, err := s.position.AtPly(s.ply); err == nil {
-		for _, move := range analysis.PV[:min(6, len(analysis.PV))] {
-			pv = append(pv, position.SAN(move))
-			if position.ApplyUCI(move) != nil {
-				break
-			}
-		}
-	}
-	return []string{"", bar + "  " + t.Accent().Bold(true).Render(formatScore(analysis)),
-		t.Muted().Render(strings.Join(pv, " ")) + t.Faint().Render(fmt.Sprintf("  d%d", analysis.Depth))}
-}
-
 func (s *Study) Hints() []widgets.Hint {
-	switch {
-	case s.prompt != nil:
+	if s.prompt != nil {
 		return []widgets.Hint{{Key: "enter", Label: "open"}, {Key: "esc", Label: "back"}}
-	case s.game != nil:
-		return []widgets.Hint{{Key: "←→", Label: "step"}, {Key: "↑↓", Label: "±10"}, {Key: "a", Label: "analyse"}, {Key: "o", Label: "open on lichess"}, {Key: "backspace", Label: "back"}}
 	}
-	return []widgets.Hint{{Key: "↑↓", Label: "select"}, {Key: "enter", Label: "replay"}, {Key: "[ ]", Label: "games/studies"}, {Key: "u", Label: "player"}, {Key: "r", Label: "refresh"}}
+	action := "analyse"
+	if s.section == studyStudies {
+		action = "read"
+	}
+	return []widgets.Hint{{Key: "↑↓", Label: "select"}, {Key: "enter", Label: action}, {Key: "[ ]", Label: "games/studies"}, {Key: "u", Label: "player"}, {Key: "o", Label: "open on lichess"}}
 }
 
-func (s *Study) Status() string {
-	if s.game != nil {
-		return "lichess.org/" + s.game.ID
-	}
-	return ""
-}
+func (s *Study) Status() string { return "" }
 
-func (s *Study) CapturesKey(key string) bool {
-	return s.prompt != nil || (s.game != nil && (key == "q" || key == "0" || key == "G"))
-}
+func (s *Study) CapturesKey(key string) bool { return s.prompt != nil }

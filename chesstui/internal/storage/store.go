@@ -111,6 +111,14 @@ CREATE TABLE IF NOT EXISTS analysis (
     created_at TEXT NOT NULL,
     PRIMARY KEY(game_id, ply, depth),
     FOREIGN KEY(game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS books (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    path TEXT NOT NULL DEFAULT '',
+    position INTEGER NOT NULL DEFAULT 0,
+    bookmarks TEXT NOT NULL DEFAULT '',
+    opened_at TEXT NOT NULL
 );`
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("apply database schema: %w", err)

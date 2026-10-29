@@ -225,7 +225,7 @@ h1 {
   position: relative;
   margin: clamp(var(--space-7), 8vw, var(--space-9)) auto 0;
   max-width: 1040px;
-  aspect-ratio: 913 / 585;
+  aspect-ratio: 1047 / 622;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   background: #111214;
@@ -238,7 +238,6 @@ h1 {
   width: 100%;
   height: 100%;
   opacity: 0;
-  transition: opacity 160ms linear;
 }
 
 .hero-terminal .frame.is-visible {
@@ -342,8 +341,3 @@ kbd {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero-terminal .frame {
-    transition: none;
-  }
-}

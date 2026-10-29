@@ -91,6 +91,7 @@ func run() error {
 	defer store.Close()
 
 	current := session.New(cfg, paths, store, auth.SystemTokenStore{FallbackPath: paths.TokenFile})
+	defer current.Close()
 	program := tea.NewProgram(app.New(current))
 	if _, err := program.Run(); err != nil {
 		slog.Error("application stopped", "error", err)

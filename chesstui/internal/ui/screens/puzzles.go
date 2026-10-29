@@ -60,7 +60,22 @@ func (p *Puzzles) Activate() tea.Cmd {
 		return nil
 	}
 	p.activated, p.loading = true, true
-	return p.loadDaily
+	if p.ctx.Session.Config.LichessBeta {
+		if count, err := p.ctx.Session.Store.PuzzleCount(context.Background()); err == nil && count == 0 {
+			return p.loadDaily
+		}
+	}
+	return p.loadLocal
+}
+
+// online reports whether Lichess puzzles may be fetched, and says how to
+// enable them when they may not.
+func (p *Puzzles) online() bool {
+	if p.ctx.Session.Config.LichessBeta {
+		return true
+	}
+	p.note = plainNote("Lichess puzzles need the Lichess beta · turn it on in Settings")
+	return false
 }
 
 func (p *Puzzles) loadDaily() tea.Msg {
@@ -77,7 +92,7 @@ func (p *Puzzles) loadLocal() tea.Msg {
 	cfg := p.ctx.Session.Config
 	puzzle, err := p.ctx.Session.Store.RandomPuzzle(context.Background(), cfg.PuzzleRatingFloor, cfg.PuzzleRatingCeil)
 	if errors.Is(err, storage.ErrNotFound) {
-		err = errors.New("No saved puzzles yet · press i to import a Lichess pack")
+		err = errors.New("No puzzles saved yet · press i to import a pack")
 	}
 	return puzzleLoadedMsg{puzzle: puzzle, err: err}
 }
@@ -144,7 +159,7 @@ func (p *Puzzles) Update(msg tea.Msg) tea.Cmd {
 		if msg.err != nil {
 			p.note = errNote(msg.err)
 		} else {
-			p.note = okNote("Imported %s puzzles · l to play one", groupThousands(msg.progress.Imported))
+			p.note = okNote("Imported %s puzzles · n to play one", groupThousands(msg.progress.Imported))
 		}
 		return nil
 	}
@@ -168,15 +183,21 @@ func (p *Puzzles) Update(msg tea.Msg) tea.Cmd {
 		}
 	}
 	switch key {
-	case "t":
-		p.loading = true
-		return p.loadDaily
 	case "n":
 		p.loading = true
-		return p.loadNext
-	case "l":
-		p.loading = true
 		return p.loadLocal
+	case "t":
+		if !p.online() {
+			return nil
+		}
+		p.loading = true
+		return p.loadDaily
+	case "o":
+		if !p.online() {
+			return nil
+		}
+		p.loading = true
+		return p.loadNext
 	case "i":
 		p.importing = &textInput{}
 	case "space":
@@ -318,7 +339,7 @@ func (p *Puzzles) View(width, height int) string {
 		if p.loading {
 			return t.Muted().Render("… loading today’s puzzle")
 		}
-		return t.Title().Render("Puzzles") + "\n\n" + p.ctx.note(p.note) + "\n\n" + t.Faint().Render("t today · n next · l saved")
+		return t.Title().Render("Puzzles") + "\n\n" + p.ctx.note(p.note) + "\n\n" + t.Faint().Render("Import a pack from database.lichess.org with i, then n for the next puzzle.")
 	}
 	board := p.input.decorate(widgets.Board{
 		Theme: *t, Flipped: p.solver == chesscore.Black, Glyphs: p.ctx.Session.Config.Glyphs, LastMove: lastMove(p.position),
@@ -424,7 +445,10 @@ func (p *Puzzles) Hints() []widgets.Hint {
 	if p.importing != nil {
 		return []widgets.Hint{{Key: "enter", Label: "import"}, {Key: "esc", Label: "back"}}
 	}
-	actions := []widgets.Hint{{Key: "n", Label: "next"}, {Key: "t", Label: "today"}, {Key: "l", Label: "saved"}, {Key: "i", Label: "import pack"}}
+	actions := []widgets.Hint{{Key: "n", Label: "next from packs"}, {Key: "i", Label: "import pack"}}
+	if p.ctx.Session.Config.LichessBeta {
+		actions = append(actions, widgets.Hint{Key: "t", Label: "Lichess daily"}, widgets.Hint{Key: "o", Label: "one from Lichess"})
+	}
 	if p.position == nil || p.solved {
 		return actions
 	}

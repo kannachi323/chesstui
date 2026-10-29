@@ -327,7 +327,7 @@ func (w *Watch) consume(event lichess.TVEvent) {
 func (w *Watch) View(width, height int) string {
 	listWidth := min(40, max(28, width/3))
 	if width < 76 {
-		return w.tvView(width, height-2) + "\n\n" + w.ctx.tabs([]string{"TV", "Streams", "Events"}, w.section)
+		return w.tvView(width, height-2) + "\n\n" + w.ctx.tabs([]string{"Channels", "Streams", "Events"}, w.section)
 	}
 	left := w.listView(listWidth, height)
 	right := w.tvView(width-listWidth-4, height)
@@ -367,7 +367,7 @@ func (w *Watch) listView(width, height int) string {
 	case len(rows) == 0:
 		body = t.Faint().Render("  " + empty)
 	}
-	out := w.ctx.tabs([]string{"TV", "Streams", "Events"}, w.section) + "\n\n" + body
+	out := w.ctx.tabs([]string{"Channels", "Streams", "Events"}, w.section) + "\n\n" + body
 	if w.note.text != "" {
 		out += "\n\n" + w.ctx.note(w.note)
 	}
@@ -446,7 +446,7 @@ func padRight(text string, width int) string {
 }
 
 func (w *Watch) Hints() []widgets.Hint {
-	hints := []widgets.Hint{{Key: "[ ]", Label: "section"}, {Key: "↑↓", Label: "select"}}
+	hints := []widgets.Hint{{Key: "[ ]", Label: "list"}, {Key: "↑↓", Label: "select"}}
 	if w.section == watchTV {
 		hints = append(hints, widgets.Hint{Key: "enter", Label: "watch"}, widgets.Hint{Key: "←→", Label: "rewind"}, widgets.Hint{Key: "end", Label: "live"})
 	} else {

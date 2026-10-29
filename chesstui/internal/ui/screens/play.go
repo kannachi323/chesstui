@@ -10,8 +10,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	chesscore "github.com/kannachi323/chesstui/internal/chess"
+	"github.com/kannachi323/chesstui/internal/domain"
 	"github.com/kannachi323/chesstui/internal/engine"
 	"github.com/kannachi323/chesstui/internal/lichess"
+	"github.com/kannachi323/chesstui/internal/pgn"
 	"github.com/kannachi323/chesstui/internal/platform"
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
 )
@@ -49,12 +51,6 @@ type moveFinishedMsg struct {
 	err    error
 }
 
-type engineMoveMsg struct {
-	game     int
-	analysis engine.Analysis
-	err      error
-}
-
 type clockTickMsg struct{ game string }
 
 var clocks = []struct {
@@ -65,7 +61,6 @@ var clocks = []struct {
 const (
 	playAI = iota
 	playFriend
-	playLocal
 	playClock
 	playColor
 	playAccount
@@ -90,8 +85,6 @@ type Play struct {
 	input      moveInput
 	gameID     string
 	color      string // "white" or "black": the side the user plays
-	local      bool
-	localGame  int
 	finished   bool
 	confirming string
 	white      lichess.GameUser
@@ -215,21 +208,6 @@ func (p *Play) Update(msg tea.Msg) tea.Cmd {
 			p.note = plainNote("Draw offered")
 		}
 		return nil
-	case engineMoveMsg:
-		if msg.game != p.localGame || p.position == nil {
-			return nil
-		}
-		p.busy = false
-		if msg.err != nil {
-			p.note = errNote(msg.err)
-			return nil
-		}
-		if err := p.position.ApplyUCI(msg.analysis.BestMove); err != nil {
-			p.note = errNote(err)
-			return nil
-		}
-		p.afterLocalMove()
-		return nil
 	}
 
 	key, ok := keyString(msg)
@@ -279,7 +257,7 @@ func (p *Play) updateMenu(key string) tea.Cmd {
 			delta = -1
 		}
 		switch p.selected {
-		case playAI, playLocal:
+		case playAI:
 			p.level = min(8, max(1, p.level+delta))
 		case playClock:
 			p.clock = (p.clock + delta + len(clocks)) % len(clocks)
@@ -301,8 +279,6 @@ func (p *Play) updateMenu(key string) tea.Cmd {
 				return nil
 			}
 			p.username, p.note = &textInput{allowed: usernameChar}, note{}
-		case playLocal:
-			return p.startLocal()
 		case playAccount:
 			if signedIn {
 				p.note = plainNote("Sign out from Settings")
@@ -335,16 +311,16 @@ func (p *Play) updateGame(key string) tea.Cmd {
 	}
 	switch key {
 	case "esc", "n":
-		if p.finished || p.local {
+		if p.finished {
 			p.resetGame()
+		}
+	case "enter":
+		if p.finished {
+			id := "lichess-" + p.gameID
+			return func() tea.Msg { return OpenAnalyzeMsg{GameID: id} }
 		}
 	case "r":
 		if p.finished {
-			return nil
-		}
-		if p.local {
-			p.resetGame()
-			p.note = plainNote("You resigned")
 			return nil
 		}
 		if p.ctx.Session.Config.ConfirmResign && p.confirming != "resign" {
@@ -354,12 +330,12 @@ func (p *Play) updateGame(key string) tea.Cmd {
 		p.confirming, p.busy = "", true
 		return p.gameAction("resign")
 	case "x":
-		if !p.local && !p.finished {
+		if !p.finished {
 			p.busy = true
 			return p.gameAction("abort")
 		}
 	case "o":
-		if !p.local && !p.finished {
+		if !p.finished {
 			p.busy = true
 			return p.gameAction("draw")
 		}
@@ -401,7 +377,7 @@ func (p *Play) updateUsername(key string) tea.Cmd {
 
 func (p *Play) startOnlineGame(id, color string) tea.Cmd {
 	p.stopBoard()
-	p.gameID, p.color, p.local, p.finished, p.busy = id, color, false, false, false
+	p.gameID, p.color, p.finished, p.busy = id, color, false, false
 	p.note, p.input, p.confirming = plainNote("Connecting to the game"), moveInput{}, ""
 	p.initialFEN, p.white, p.black, p.state = "startpos", lichess.GameUser{}, lichess.GameUser{}, lichess.GameState{}
 	p.position, _ = chesscore.NewPosition("")
@@ -520,8 +496,11 @@ func (p *Play) consumeBoardEvent(event lichess.BoardEvent) {
 	p.position, p.state, p.stateAt = position, state, time.Now()
 	switch {
 	case gameOver(state.Status):
-		p.finished = true
-		p.note = plainNote(describeResult(state.Status, state.Winner, p.color))
+		if !p.finished {
+			p.finished = true
+			p.note = plainNote(describeResult(state.Status, state.Winner, p.color) + " · enter to analyse")
+			p.saveFinished(state)
+		}
 	case p.color == "white" && state.BDraw, p.color == "black" && state.WDraw:
 		p.note = plainNote("Draw offered · o to accept")
 	case p.color != "" && sideName(position.Turn()) == p.color:
@@ -529,6 +508,36 @@ func (p *Play) consumeBoardEvent(event lichess.BoardEvent) {
 	default:
 		p.note = note{}
 	}
+}
+
+// saveFinished stores a finished online game in the local library.
+func (p *Play) saveFinished(state lichess.GameState) {
+	game, err := pgn.New(strings.TrimPrefix(p.initialFEN, "startpos"))
+	if err != nil {
+		return
+	}
+	node := game.Root
+	for _, move := range strings.Fields(state.Moves) {
+		if node, err = node.Play(move); err != nil {
+			return
+		}
+	}
+	game.Result = map[string]string{"white": "1-0", "black": "0-1"}[state.Winner]
+	if game.Result == "" {
+		game.Result = "1/2-1/2"
+	}
+	white, black := p.playerName(p.white, "White"), p.playerName(p.black, "Black")
+	game.SetTag("Event", "Lichess game")
+	game.SetTag("Site", "https://lichess.org/"+p.gameID)
+	game.SetTag("Date", time.Now().Format("2006.01.02"))
+	game.SetTag("White", white)
+	game.SetTag("Black", black)
+	record := domain.Game{
+		ID: "lichess-" + p.gameID, Source: "lichess", Variant: "standard", Moves: node.Line(),
+		White: domain.Player{Name: white, Rating: p.white.Rating}, Black: domain.Player{Name: black, Rating: p.black.Rating},
+		Result: game.Result, PGN: game.String(), PlayedAt: time.Now(),
+	}
+	_ = p.ctx.Session.Store.UpsertGame(context.Background(), record)
 }
 
 func describeResult(status, winner, you string) string {
@@ -556,78 +565,16 @@ func sideName(color chesscore.Color) string {
 	return "white"
 }
 
-func (p *Play) startLocal() tea.Cmd {
-	if _, err := engine.NewStockfish(p.ctx.Session.Config.StockfishPath); err != nil {
-		p.note = errNote(err)
-		return nil
-	}
-	p.stopBoard()
-	p.localGame++
-	p.position, _ = chesscore.NewPosition("")
-	color := colors[p.side]
-	if color == "random" {
-		color = colors[1+time.Now().Nanosecond()%2]
-	}
-	p.local, p.finished, p.color, p.gameID = true, false, color, ""
-	p.input, p.state = moveInput{}, lichess.GameState{}
-	you, engineUser := lichess.GameUser{Name: "You"}, lichess.GameUser{Name: "Stockfish", AILevel: p.level}
-	p.white, p.black = you, engineUser
-	if color == "black" {
-		p.white, p.black = engineUser, you
-		return p.engineMove()
-	}
-	p.note = plainNote("Your move")
-	return nil
-}
-
-// engineMove asks local Stockfish for its reply in the current position.
-func (p *Play) engineMove() tea.Cmd {
-	analyzer, err := engine.NewStockfish(p.ctx.Session.Config.StockfishPath)
-	if err != nil {
-		p.note = errNote(err)
-		return nil
-	}
-	p.busy, p.note = true, busyNote("Stockfish is thinking")
-	fen, level, game := p.position.FEN(), p.level, p.localGame
-	return func() tea.Msg {
-		analysis, err := analyzer.Play(context.Background(), fen, level)
-		return engineMoveMsg{game: game, analysis: analysis, err: err}
-	}
-}
-
 func (p *Play) submitMove(move string) tea.Cmd {
-	if !p.local {
-		if sideName(p.position.Turn()) != p.color {
-			p.note = plainNote("Wait for your opponent’s move")
-			return nil
-		}
-		p.busy = true
-		gameID, client := p.gameID, p.ctx.Session.Client()
-		return func() tea.Msg {
-			return moveFinishedMsg{action: "move", err: client.Move(context.Background(), gameID, move, false)}
-		}
-	}
-	if err := p.position.ApplyUCI(move); err != nil {
-		p.note = errNote(err)
+	if sideName(p.position.Turn()) != p.color {
+		p.note = plainNote("Wait for your opponent’s move")
 		return nil
 	}
-	if p.afterLocalMove() {
-		return nil
+	p.busy = true
+	gameID, client := p.gameID, p.ctx.Session.Client()
+	return func() tea.Msg {
+		return moveFinishedMsg{action: "move", err: client.Move(context.Background(), gameID, move, false)}
 	}
-	return p.engineMove()
-}
-
-// afterLocalMove updates the note and reports whether the game ended.
-func (p *Play) afterLocalMove() bool {
-	if outcome := p.position.Outcome(); outcome != "" {
-		p.finished, p.note = true, plainNote(outcome)
-		return true
-	}
-	p.note = plainNote("Your move")
-	if p.position.InCheck() {
-		p.note = plainNote("Check · your move")
-	}
-	return false
 }
 
 func (p *Play) gameAction(action string) tea.Cmd {
@@ -648,8 +595,7 @@ func (p *Play) gameAction(action string) tea.Cmd {
 
 func (p *Play) resetGame() {
 	p.stopBoard()
-	p.localGame++
-	p.position, p.gameID, p.local, p.finished, p.busy = nil, "", false, false, false
+	p.position, p.gameID, p.finished, p.busy = nil, "", false, false
 	p.input, p.note = moveInput{}, note{}
 }
 
@@ -698,7 +644,7 @@ func (p *Play) sideView(width, height int) string {
 	if p.note.text != "" {
 		parts = append(parts, p.ctx.note(p.note))
 	}
-	if !p.local && !p.finished {
+	if !p.finished {
 		parts = append(parts, p.ctx.Theme.Faint().Render("engine help is off in online games"))
 	}
 	return strings.Join(parts, "\n")
@@ -727,7 +673,7 @@ func (p *Play) playerName(user lichess.GameUser, fallback string) string {
 }
 
 func (p *Play) clockText(white bool) string {
-	if p.local || p.state.WTime == 0 && p.state.BTime == 0 {
+	if p.state.WTime == 0 && p.state.BTime == 0 {
 		return ""
 	}
 	ms := p.state.BTime
@@ -776,10 +722,6 @@ func (p *Play) menuView(width int) string {
 		return t.Faint().Render(text)
 	}
 	level := fmt.Sprintf("level %d", p.level)
-	engineValue := value(level, p.selected == playLocal)
-	if _, err := engine.NewStockfish(p.ctx.Session.Config.StockfishPath); err != nil {
-		engineValue = t.Faint().Render("not installed")
-	}
 	rowWidth := min(52, width)
 	row := func(label, right string) string {
 		gap := max(2, rowWidth-2-lipgloss.Width(label)-lipgloss.Width(right))
@@ -788,7 +730,6 @@ func (p *Play) menuView(width int) string {
 	rows := []string{
 		row(needsLichess("Lichess AI", playAI), value(level, p.selected == playAI)),
 		row(needsLichess("Challenge a player", playFriend), value("by username", false)),
-		row(p.ctx.item("Stockfish, offline", p.selected == playLocal), engineValue),
 		row(p.ctx.item("Clock", p.selected == playClock), value(clocks[p.clock].label, p.selected == playClock)),
 		row(p.ctx.item("Color", p.selected == playColor), value(colors[p.side], p.selected == playColor)),
 		row(p.ctx.item("Lichess account", p.selected == playAccount), account),
@@ -809,15 +750,13 @@ func (p *Play) Hints() []widgets.Hint {
 	case p.position == nil:
 		return []widgets.Hint{{Key: "↑↓", Label: "choose"}, {Key: "←→", Label: "adjust"}, {Key: "enter", Label: "start"}}
 	case p.finished:
-		return []widgets.Hint{{Key: "n", Label: "new game"}}
-	case p.local:
-		return append(moveHints(), widgets.Hint{Key: "r", Label: "resign"}, widgets.Hint{Key: "n", Label: "new game"})
+		return []widgets.Hint{{Key: "enter", Label: "analyse"}, {Key: "n", Label: "new game"}}
 	}
 	return append(moveHints(), widgets.Hint{Key: "o", Label: "offer draw"}, widgets.Hint{Key: "x", Label: "abort"}, widgets.Hint{Key: "r", Label: "resign"})
 }
 
 func (p *Play) Status() string {
-	if p.position != nil && !p.local {
+	if p.position != nil {
 		return "lichess.org/" + p.gameID
 	}
 	return ""
@@ -836,7 +775,7 @@ func (p *Play) CapturesKey(key string) bool {
 
 // QuitWarning holds the app open for a second q during a live online game.
 func (p *Play) QuitWarning() bool {
-	return p.position != nil && !p.local && !p.finished
+	return p.position != nil && !p.finished
 }
 
 func lastMove(position *chesscore.Position) string {

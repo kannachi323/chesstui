@@ -91,11 +91,22 @@ These were decided without the owner and are easy to revisit.
 - **Before and after.** `docs/screenshots/before/` holds the screenshots from before this pass. The files in `docs/screenshots/` are the current ones.
 - **Release check.** `goreleaser check` passed with GoReleaser v2.19.0. A local `--snapshot` run built all five archives and `checksums.txt`, and the darwin/arm64 binary reported its stamped version. The binary was downloaded to a temporary folder, verified against the release checksums and deleted afterwards, so GoReleaser is still not installed.
 
+### Local-first pass
+
+- **Bring your own engine.** chesstui ships no AI. A single long-running UCI process is reused for play, review and live analysis, and receives the whole move list each turn. It works with Stockfish or any UCI engine set in Settings.
+- **New sections.**
+  - Play now means games against that engine, saved as PGN after every move, resumable, with take-backs.
+  - Analyze reviews games and supports side lines and comments.
+  - Read is a book reader with an included starter book. Its prose is original; the games in it are public classics.
+- **Lichess (beta).** TV, a player's games and studies, and online play share one tab that Settings can hide. Puzzles default to imported packs; the Lichess daily is available while the beta is on.
+- **Testing without Stockfish.** A small fake UCI engine in `chesstui/internal/app/testdata/fakeengine` is built during tests, so Play, review and live analysis run end to end and are photographed without Stockfish. It plays and scores by material only, so the evaluations in the screenshots are illustrative.
+- **Removed from the old Study screen:** in-place replay and analysis of Lichess games. A game is now copied into the library and opened in Analyze.
+
 ## Remaining owner steps
 
 1. Rename the GitHub repository from `chess-cli` to `chesstui`, or adjust the release config as described above.
-2. Install Stockfish (`brew install stockfish`). Play one local game and analyse one replayed position to confirm the real engine works.
-3. Sign in to Lichess from **Play** once. Start an AI game, make a move, and resign, to exercise the Board API end to end with a real token.
+2. Install Stockfish (`brew install stockfish`). Play one game, review it in Analyze and check the marks look sensible, and try live analysis with space. All of this has only run against the fake test engine.
+3. With the Lichess beta on, sign in from **Lichess → Play online** once. Start an AI game, make a move, and resign, to exercise the Board API end to end with a real token.
 4. Optionally run `staticcheck ./...`. It was not installed here. Install GoReleaser (`brew install goreleaser`) for future `make snapshot` runs.
 5. Set up the Homebrew tap, if you want one.
 6. Push the branch, open a PR into `main`, and tag `v2.0.0` after it merges.

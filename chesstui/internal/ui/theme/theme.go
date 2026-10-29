@@ -30,6 +30,7 @@ type Theme struct {
 	Selected   color.Color
 	Hint       color.Color // legal-move dots
 	Capture    color.Color // a legal move lands on an enemy piece
+	Suggest    color.Color // the engine's suggested move
 	WhitePiece color.Color
 	BlackPiece color.Color
 }
@@ -46,6 +47,7 @@ func board(t Theme) Theme {
 	t.Selected = lipgloss.Color("#D6A64F")
 	t.Hint = lipgloss.Color("#3E4A38")
 	t.Capture = lipgloss.Color("#C98F6B")
+	t.Suggest = lipgloss.Color("#8FB0C9")
 	t.WhitePiece = lipgloss.Color("#FFFDF7")
 	t.BlackPiece = lipgloss.Color("#16181A")
 	return t

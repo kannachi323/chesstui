@@ -114,10 +114,10 @@ func TestUnknownCommandIsReported(t *testing.T) {
 func TestPasteGoesOnlyToTheVisibleScreen(t *testing.T) {
 	model := newTestModel(t)
 	model.width, model.height = 100, 30
-	model = pressRunes(model, "5") // Study opens with a username prompt
-	updated, _ := model.Update(tea.PasteMsg{Content: "DrNykterstein\n"})
+	model = pressRunes(model, "4o") // Read: open a book file
+	updated, _ := model.Update(tea.PasteMsg{Content: "/books/endgames.pgn\n"})
 	model = updated.(Model)
-	if !strings.Contains(ansi.Strip(model.render()), "DrNykterstein") {
+	if !strings.Contains(ansi.Strip(model.render()), "/books/endgames.pgn") {
 		t.Fatalf("paste missing:\n%s", ansi.Strip(model.render()))
 	}
 }

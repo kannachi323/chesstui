@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/adrg/xdg"
 )
@@ -26,11 +27,17 @@ type Paths struct {
 
 // Config contains user-editable local preferences. Secrets are stored separately.
 type Config struct {
-	Theme             string `json:"theme"` // auto, dark or light
-	Glyphs            string `json:"glyphs"`
-	LichessURL        string `json:"lichess_url"`
-	StockfishPath     string `json:"stockfish_path,omitempty"`
+	Theme      string `json:"theme"` // auto, dark or light
+	Glyphs     string `json:"glyphs"`
+	LichessURL string `json:"lichess_url"`
+	// EnginePath points at any UCI engine. Empty means find Stockfish.
+	EnginePath        string `json:"engine_path,omitempty"`
+	LegacyEnginePath  string `json:"stockfish_path,omitempty"` // read from older configs
+	EngineThreads     int    `json:"engine_threads"`
+	EngineHashMB      int    `json:"engine_hash_mb"`
 	AnalysisDepth     int    `json:"analysis_depth"`
+	ReviewDepth       int    `json:"review_depth"`
+	LichessBeta       bool   `json:"lichess_beta"`
 	DefaultWatch      string `json:"default_watch_channel"`
 	MouseEnabled      bool   `json:"mouse_enabled"`
 	ConfirmResign     bool   `json:"confirm_resign"`
@@ -43,7 +50,11 @@ func Default() Config {
 		Theme:             "auto",
 		Glyphs:            "solid",
 		LichessURL:        "https://lichess.org",
-		AnalysisDepth:     16,
+		AnalysisDepth:     20,
+		ReviewDepth:       14,
+		EngineThreads:     defaultThreads(),
+		EngineHashMB:      128,
+		LichessBeta:       true,
 		DefaultWatch:      "best",
 		MouseEnabled:      true,
 		ConfirmResign:     true,
@@ -128,6 +139,9 @@ func Save(path string, cfg Config) error {
 	return nil
 }
 
+// defaultThreads leaves half the cores for the editor and everything else.
+func defaultThreads() int { return max(1, min(8, runtime.NumCPU()/2)) }
+
 func normalize(cfg *Config) {
 	switch cfg.Theme {
 	case "auto", "dark", "light":
@@ -146,6 +160,19 @@ func normalize(cfg *Config) {
 	}
 	if cfg.AnalysisDepth < 1 || cfg.AnalysisDepth > 40 {
 		cfg.AnalysisDepth = Default().AnalysisDepth
+	}
+	if cfg.ReviewDepth < 6 || cfg.ReviewDepth > 30 {
+		cfg.ReviewDepth = Default().ReviewDepth
+	}
+	if cfg.EnginePath == "" && cfg.LegacyEnginePath != "" {
+		cfg.EnginePath = cfg.LegacyEnginePath
+	}
+	cfg.LegacyEnginePath = ""
+	if cfg.EngineThreads < 1 || cfg.EngineThreads > 64 {
+		cfg.EngineThreads = defaultThreads()
+	}
+	if cfg.EngineHashMB < 16 || cfg.EngineHashMB > 4096 {
+		cfg.EngineHashMB = Default().EngineHashMB
 	}
 	if cfg.PuzzleRatingCeil <= cfg.PuzzleRatingFloor {
 		cfg.PuzzleRatingFloor = Default().PuzzleRatingFloor

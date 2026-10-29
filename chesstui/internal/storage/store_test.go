@@ -54,3 +54,44 @@ func TestGameAndAnalysisPersistence(t *testing.T) {
 		t.Fatalf("analysis count = %d", count)
 	}
 }
+
+func TestGamesAnalysisAndBooks(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.UpsertGame(ctx, domain.Game{ID: "local-1", Source: "local", White: domain.Player{Name: "You"}, Black: domain.Player{Name: "Stockfish"}, Result: "*", PGN: "1. e4 *"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpsertAnalysis(ctx, domain.Analysis{GameID: "local-1", Ply: 1, Depth: 12, Score: 30, PV: []string{"e7e5"}}); err != nil {
+		t.Fatal(err)
+	}
+	_ = store.UpsertAnalysis(ctx, domain.Analysis{GameID: "local-1", Ply: 1, Depth: 16, Score: 25})
+	games, err := store.ListGames(ctx, 10)
+	if err != nil || len(games) != 1 || !games[0].Reviewed || games[0].Black != "Stockfish" {
+		t.Fatalf("games=%+v err=%v", games, err)
+	}
+	analysis, err := store.GameAnalysis(ctx, "local-1")
+	if err != nil || analysis[1].Depth != 16 || analysis[1].Score != 25 {
+		t.Fatalf("analysis=%+v err=%v", analysis, err)
+	}
+	if pgn, err := store.GamePGN(ctx, "local-1"); err != nil || pgn != "1. e4 *" {
+		t.Fatalf("pgn=%q err=%v", pgn, err)
+	}
+	if err := store.DeleteGame(ctx, "local-1"); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := store.GameAnalysis(ctx, "local-1"); len(left) != 0 {
+		t.Fatal("analysis should cascade with the game")
+	}
+
+	if err := store.SaveBook(ctx, Book{ID: "builtin:starter", Title: "Starter", Position: 7, Bookmarks: []int{9, 3}}); err != nil {
+		t.Fatal(err)
+	}
+	books, err := store.Books(ctx)
+	if err != nil || len(books) != 1 || books[0].Position != 7 || len(books[0].Bookmarks) != 2 || books[0].Bookmarks[0] != 3 {
+		t.Fatalf("books=%+v err=%v", books, err)
+	}
+}

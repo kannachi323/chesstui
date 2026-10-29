@@ -64,7 +64,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				return m, command
 			}
 		}
-		m.focus, m.nav, m.pending = focusNavigation, m.active, ""
+		m.focus, m.nav, m.pending = focusNavigation, m.pos(m.active), ""
 		return m, nil
 	case "tab", "shift+tab":
 		m.toggleFocus()
@@ -81,8 +81,11 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, m.switchWorkspace(1)
 	}
 
-	if len(key) == 1 && key[0] >= '1' && key[0] <= '7' {
-		return m, m.activate(int(key[0] - '1'))
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+		if tabs := m.tabs(); int(key[0]-'1') < len(tabs) {
+			return m, m.activate(tabs[key[0]-'1'])
+		}
+		return m, nil
 	}
 	if m.focus == focusNavigation {
 		return m.updateNavigation(key)
@@ -109,7 +112,7 @@ func (m *Model) resolvePending(key string) (tea.Cmd, bool) {
 		m.pending = ""
 		switch key {
 		case "k", "h":
-			m.focus, m.nav = focusNavigation, m.active
+			m.focus, m.nav = focusNavigation, m.pos(m.active)
 		case "j", "l":
 			m.focus = focusContent
 		default:
@@ -123,16 +126,16 @@ func (m *Model) resolvePending(key string) (tea.Cmd, bool) {
 func (m Model) updateNavigation(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "h", "k", "left", "up":
-		m.nav = (m.nav + len(m.screens) - 1) % len(m.screens)
+		m.nav = (m.nav + len(m.tabs()) - 1) % len(m.tabs())
 	case "l", "right", "down":
-		m.nav = (m.nav + 1) % len(m.screens)
+		m.nav = (m.nav + 1) % len(m.tabs())
 	case "0", "home":
 		m.nav = 0
 	case "$", "end":
-		m.nav = len(m.screens) - 1
+		m.nav = len(m.tabs()) - 1
 	case "j", "enter", "space":
 		m.focus = focusContent
-		return m, m.activate(m.nav)
+		return m, m.activate(m.tabs()[min(m.nav, len(m.tabs())-1)])
 	}
 	return m, nil
 }
@@ -173,12 +176,12 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	case "tp", "tabprevious", "tabprev":
 		return m, m.switchWorkspace(-1)
 	case "nav", "navigation":
-		m.focus, m.nav = focusNavigation, m.active
+		m.focus, m.nav = focusNavigation, m.pos(m.active)
 	case "content":
 		m.focus = focusContent
 	default:
-		for index, label := range labels {
-			if strings.EqualFold(command, label) {
+		for _, index := range m.tabs() {
+			if strings.EqualFold(command, labels[index]) {
 				return m, m.activate(index)
 			}
 		}
@@ -204,7 +207,8 @@ func (m *Model) activate(index int) tea.Cmd {
 	if index < 0 || index >= len(m.screens) {
 		return nil
 	}
-	m.active, m.nav, m.help = index, index, false
+	m.active, m.help = index, false
+	m.nav = m.pos(index)
 	if screen, ok := m.screens[index].(screens.Activator); ok {
 		return screen.Activate()
 	}
@@ -212,12 +216,13 @@ func (m *Model) activate(index int) tea.Cmd {
 }
 
 func (m *Model) switchWorkspace(delta int) tea.Cmd {
-	return m.activate((m.active + delta + len(m.screens)) % len(m.screens))
+	tabs := m.tabs()
+	return m.activate(tabs[(m.pos(m.active)+delta+len(tabs))%len(tabs)])
 }
 
 func (m *Model) toggleFocus() {
 	if m.focus == focusContent {
-		m.focus, m.nav = focusNavigation, m.active
+		m.focus, m.nav = focusNavigation, m.pos(m.active)
 	} else {
 		m.focus = focusContent
 	}

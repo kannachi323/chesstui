@@ -37,6 +37,9 @@ type Activator interface {
 	Activate() tea.Cmd
 }
 
+// OpenBookMsg asks the app to show a book file in Read.
+type OpenBookMsg struct{ Path string }
+
 // QuitGuard is implemented by screens that should confirm before the app
 // quits, such as Play during a live online game.
 type QuitGuard interface {

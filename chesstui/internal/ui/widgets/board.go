@@ -18,6 +18,7 @@ type Board struct {
 	Cursor     string   // keyboard cursor square
 	Selected   string   // picked-up piece
 	Targets    []string // legal destinations of Selected
+	Suggest    string   // an engine move to show, in UCI
 	ShowCoords bool
 }
 
@@ -57,6 +58,7 @@ func (b Board) Render(position *chesscore.Position) string {
 	files := orderedIndices(b.Flipped)
 	ranks := orderedIndices(!b.Flipped)
 	from, to := moveSquares(b.LastMove)
+	suggestFrom, suggestTo := moveSquares(b.Suggest)
 	check := ""
 	if position.InCheck() {
 		check = position.KingSquare(position.Turn())
@@ -82,6 +84,9 @@ func (b Board) Render(position *chesscore.Position) string {
 				square := chesscore.SquareName(file, rank)
 				piece := position.PieceAt(file, rank)
 				style := b.squareStyle(file, rank, square, piece, from, to, check, cellWidth)
+				if square == suggestFrom || square == suggestTo {
+					style = style.Background(b.Theme.Suggest)
+				}
 				glyph := " "
 				if cellRow == glyphRow {
 					switch {

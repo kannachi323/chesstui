@@ -10,7 +10,7 @@
 - API errors are bounded before display; streams cap individual NDJSON records at 2 MiB.
 - Config writes use a protected temporary file, `fsync`, and atomic replacement.
 - SQLite enables foreign keys, WAL, a busy timeout, and parameterized statements.
-- Stockfish is executed directly, never through a shell, and every analysis process is cancellable and isolated.
+- The UCI engine is executed directly, never through a shell; searches are cancellable, and a misbehaving engine is restarted.
 - Engine analysis is unavailable in active online Lichess games.
 
 ## Lichess permissions

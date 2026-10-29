@@ -8,9 +8,9 @@ export const INSTALL_COMMAND = 'git clone https://github.com/kannachi323/chesstu
 const HERO_FRAMES = Array.from({ length: 16 }, (_, i) => `/shots/hero/${String(i).padStart(2, '0')}.svg`)
 
 const FEATURES = [
-  { src: '/shots/play-card.svg', title: 'Play', caption: 'Lichess AI, a friend, or Stockfish offline.' },
-  { src: '/shots/puzzle-card.svg', title: 'Train', caption: 'The daily puzzle, and every pack you import.' },
-  { src: '/shots/study-card.svg', title: 'Replay', caption: 'Any public game, move by move.' },
+  { src: '/shots/analyze-card.svg', title: 'Analyze', caption: 'Your engine reviews every move and marks the mistakes.' },
+  { src: '/shots/read-card.svg', title: 'Read', caption: 'Chess books in a terminal split. The board follows the text.' },
+  { src: '/shots/play-card.svg', title: 'Play', caption: 'Stockfish or any UCI engine, saved and resumable.' },
   { src: '/shots/learn-light-card.svg', title: 'Adapts', caption: 'Light or dark, it follows your terminal.' },
 ]
 
@@ -18,7 +18,7 @@ function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 }
 
-/** Replays recorded Lichess TV frames from the real UI, one move per beat. */
+/** Replays frames recorded from the real reader, one move per beat. */
 export function HeroTerminal({ interval = 1100 }: { interval?: number }) {
   const [frame, setFrame] = useState(() => (prefersReducedMotion() ? HERO_FRAMES.length - 1 : 0))
 
@@ -40,15 +40,15 @@ export function HeroTerminal({ interval = 1100 }: { interval?: number }) {
   }, [interval])
 
   return (
-    <figure className="hero-terminal" aria-label="chesstui showing a live Lichess TV game">
+    <figure className="hero-terminal" aria-label="chesstui reading a chess book, with the board following the moves">
       {HERO_FRAMES.map((src, i) => (
         <img
           key={src}
           src={src}
           alt=""
           className={i === frame ? 'frame is-visible' : 'frame'}
-          width={913}
-          height={585}
+          width={1047}
+          height={622}
           loading={i < 2 ? 'eager' : 'lazy'}
           decoding="async"
           data-testid="hero-frame"
@@ -126,7 +126,7 @@ export default function App() {
       <main>
         <section className="hero">
           <h1>Chess in the terminal.</h1>
-          <p className="lede">Play, watch and train on Lichess from your shell.</p>
+          <p className="lede">Play your engine, review your games and read chess books, right in your terminal.</p>
           <InstallCommand />
           <p className="alt">
             or <a href={RELEASES_URL}>download for macOS, Linux and Windows</a>
@@ -153,12 +153,12 @@ export default function App() {
             <kbd>←</kbd>
             <kbd>↵</kbd>
           </div>
-          <p>Type moves, or walk the board with the arrows.</p>
+          <p>Type moves, or walk the board with the arrows. Everything stays on your machine.</p>
         </section>
       </main>
 
       <footer className="footer">
-        <span>Apache-2.0 · uses the Lichess API, not affiliated with Lichess</span>
+        <span>Apache-2.0 · bring your own UCI engine · not affiliated with Lichess</span>
         <a href={REPO_URL}>Source</a>
       </footer>
     </>

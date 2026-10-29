@@ -27,10 +27,10 @@ var homeItems = []struct {
 	label, detail string
 	screen        int
 }{
-	{"Play", "Lichess or Stockfish", 1},
-	{"Watch", "Lichess TV", 2},
-	{"Puzzles", "daily and packs", 3},
-	{"Study", "replay and analyse", 4},
+	{"Play", "your engine", 1},
+	{"Analyze", "review your games", 2},
+	{"Read", "chess books", 3},
+	{"Puzzles", "packs and daily", 4},
 	{"Learn", "the basics", 5},
 }
 
@@ -108,7 +108,7 @@ func (h *Home) View(width, height int) string {
 	}
 	lines := []string{
 		t.Accent().Bold(true).Render("♞") + "  " + t.Title().Render("chesstui"),
-		t.Muted().Render("Chess in the terminal, on Lichess."),
+		t.Muted().Render("Play, review and read chess in the terminal."),
 		"",
 		h.ctx.menu(rows, h.selected, len(rows), rowWidth, true),
 	}
@@ -136,7 +136,7 @@ func (h *Home) View(width, height int) string {
 }
 
 func (h *Home) Hints() []widgets.Hint {
-	return []widgets.Hint{{Key: "↑↓", Label: "choose"}, {Key: "enter", Label: "open"}, {Key: "1–7", Label: "jump"}}
+	return []widgets.Hint{{Key: "↑↓", Label: "choose"}, {Key: "enter", Label: "open"}, {Key: "1–8", Label: "jump"}}
 }
 
 func (h *Home) Status() string { return "" }

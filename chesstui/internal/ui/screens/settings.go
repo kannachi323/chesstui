@@ -9,7 +9,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kannachi323/chesstui/internal/config"
-	"github.com/kannachi323/chesstui/internal/engine"
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
 )
 
@@ -19,13 +18,23 @@ type settingsDisconnectedMsg struct{ err error }
 // ThemeChangedMsg asks the app to re-resolve the light/dark theme.
 type ThemeChangedMsg struct{}
 
+// TabsChangedMsg asks the app to rebuild its tab bar, for example after the
+// Lichess beta was switched on or off.
+type TabsChangedMsg struct{}
+
 const (
 	settingTheme = iota
 	settingGlyphs
-	settingResign
+	settingEngine
+	settingThreads
+	settingHash
 	settingDepth
+	settingReview
+	settingBeta
 	settingChannel
+	settingResign
 	settingAccount
+	settingCount
 )
 
 type Settings struct {
@@ -33,6 +42,7 @@ type Settings struct {
 	selected   int
 	note       note
 	confirming bool
+	editing    *textInput // engine path
 }
 
 func NewSettings(ctx Context) *Settings { return &Settings{ctx: ctx} }
@@ -40,10 +50,15 @@ func (s *Settings) Init() tea.Cmd       { return nil }
 
 func (s *Settings) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if s.editing != nil {
+			s.editing.paste(msg.Content)
+		}
+		return nil
 	case settingsSavedMsg:
 		if msg.err != nil {
 			s.note = errNote(msg.err)
-		} else {
+		} else if s.note.text == "" || s.note.tone != bad {
 			s.note = okNote("Saved")
 		}
 		return nil
@@ -59,6 +74,23 @@ func (s *Settings) Update(msg tea.Msg) tea.Cmd {
 	if !ok {
 		return nil
 	}
+	if s.editing != nil {
+		switch key {
+		case "esc":
+			s.editing = nil
+		case "enter":
+			s.ctx.Session.Config.EnginePath = cleanPath(s.editing.value)
+			s.editing = nil
+			s.note = note{}
+			if _, err := s.ctx.Session.Engine(); err != nil {
+				s.note = errNote(err)
+			}
+			return s.save()
+		default:
+			s.editing.handle(key)
+		}
+		return nil
+	}
 	if key != "enter" {
 		s.confirming = false
 	}
@@ -66,29 +98,46 @@ func (s *Settings) Update(msg tea.Msg) tea.Cmd {
 	case "up", "k":
 		s.selected = max(0, s.selected-1)
 	case "down", "j":
-		s.selected = min(settingAccount, s.selected+1)
+		s.selected = min(settingCount-1, s.selected+1)
 	case "left", "h", "right", "l", "enter", "space":
-		if s.selected == settingAccount {
-			if key != "enter" || !s.ctx.Session.HasToken() {
-				return nil
+		switch s.selected {
+		case settingAccount:
+			return s.signOut(key)
+		case settingEngine:
+			if key == "enter" || key == "space" {
+				s.editing = &textInput{value: s.ctx.Session.Config.EnginePath}
 			}
-			if !s.confirming {
-				s.confirming, s.note = true, plainNote("Press enter again to sign out")
-				return nil
-			}
-			s.confirming = false
-			session := s.ctx.Session
-			return func() tea.Msg { return settingsDisconnectedMsg{err: session.Disconnect(context.Background())} }
+			return nil
 		}
 		s.change(key == "left" || key == "h")
-		cfg, path := s.ctx.Session.Config, s.ctx.Session.Paths.ConfigFile
-		save := func() tea.Msg { return settingsSavedMsg{err: config.Save(path, cfg)} }
-		if s.selected == settingTheme {
-			return tea.Batch(save, func() tea.Msg { return ThemeChangedMsg{} })
+		commands := []tea.Cmd{s.save()}
+		switch s.selected {
+		case settingTheme:
+			commands = append(commands, func() tea.Msg { return ThemeChangedMsg{} })
+		case settingBeta:
+			commands = append(commands, func() tea.Msg { return TabsChangedMsg{} })
 		}
-		return save
+		return tea.Batch(commands...)
 	}
 	return nil
+}
+
+func (s *Settings) save() tea.Cmd {
+	cfg, path := s.ctx.Session.Config, s.ctx.Session.Paths.ConfigFile
+	return func() tea.Msg { return settingsSavedMsg{err: config.Save(path, cfg)} }
+}
+
+func (s *Settings) signOut(key string) tea.Cmd {
+	if key != "enter" || !s.ctx.Session.HasToken() {
+		return nil
+	}
+	if !s.confirming {
+		s.confirming, s.note = true, plainNote("Press enter again to sign out")
+		return nil
+	}
+	s.confirming = false
+	session := s.ctx.Session
+	return func() tea.Msg { return settingsDisconnectedMsg{err: session.Disconnect(context.Background())} }
 }
 
 func cycle(options []string, current string, back bool) string {
@@ -105,6 +154,13 @@ func cycle(options []string, current string, back bool) string {
 	return options[(index+step)%len(options)]
 }
 
+func step(value, delta, low, high int, back bool) int {
+	if back {
+		return max(low, value-delta)
+	}
+	return min(high, value+delta)
+}
+
 func (s *Settings) change(back bool) {
 	cfg := &s.ctx.Session.Config
 	switch s.selected {
@@ -112,16 +168,24 @@ func (s *Settings) change(back bool) {
 		cfg.Theme = cycle([]string{"auto", "dark", "light"}, cfg.Theme, back)
 	case settingGlyphs:
 		cfg.Glyphs = cycle([]string{"solid", "classic", "ascii"}, cfg.Glyphs, back)
-	case settingResign:
-		cfg.ConfirmResign = !cfg.ConfirmResign
-	case settingDepth:
+	case settingThreads:
+		cfg.EngineThreads = step(cfg.EngineThreads, 1, 1, 64, back)
+	case settingHash:
 		if back {
-			cfg.AnalysisDepth = max(8, cfg.AnalysisDepth-2)
+			cfg.EngineHashMB = max(16, cfg.EngineHashMB/2)
 		} else {
-			cfg.AnalysisDepth = min(30, cfg.AnalysisDepth+2)
+			cfg.EngineHashMB = min(4096, cfg.EngineHashMB*2)
 		}
+	case settingDepth:
+		cfg.AnalysisDepth = step(cfg.AnalysisDepth, 2, 8, 40, back)
+	case settingReview:
+		cfg.ReviewDepth = step(cfg.ReviewDepth, 2, 6, 30, back)
+	case settingBeta:
+		cfg.LichessBeta = !cfg.LichessBeta
 	case settingChannel:
 		cfg.DefaultWatch = cycle([]string{"best", "bullet", "blitz", "rapid", "classical", "chess960", "bot"}, cfg.DefaultWatch, back)
+	case settingResign:
+		cfg.ConfirmResign = !cfg.ConfirmResign
 	}
 }
 
@@ -129,43 +193,63 @@ func (s *Settings) View(width, height int) string {
 	t := s.ctx.Theme
 	cfg := s.ctx.Session.Config
 	onOff := map[bool]string{true: "on", false: "off"}
+	rowWidth := min(60, width)
+
+	engineValue := "not found"
+	if found, err := s.ctx.Session.Engine(); err == nil {
+		engineValue = found.Name()
+	}
 	account := "not signed in"
 	if current, ok := s.ctx.Session.Account(); ok {
 		account = current.Username + " · sign out"
 	} else if s.ctx.Session.HasToken() {
 		account = "signed in · sign out"
 	}
-	rowWidth := min(56, width)
-	items := []struct{ label, value string }{
-		{"Theme", cfg.Theme},
-		{"Pieces", cfg.Glyphs + "  " + sample(cfg.Glyphs)},
-		{"Confirm resign", onOff[cfg.ConfirmResign]},
-		{"Analysis depth", fmt.Sprint(cfg.AnalysisDepth)},
-		{"TV channel", channelLabel(cfg.DefaultWatch)},
-		{"Lichess", account},
+	type item struct {
+		label, value string
+		beta         bool
+	}
+	items := []item{
+		{"Theme", cfg.Theme, false},
+		{"Pieces", cfg.Glyphs + "  " + sample(cfg.Glyphs), false},
+		{"Engine", engineValue, false},
+		{"Engine threads", fmt.Sprint(cfg.EngineThreads), false},
+		{"Engine memory", fmt.Sprintf("%d MB", cfg.EngineHashMB), false},
+		{"Analysis depth", fmt.Sprint(cfg.AnalysisDepth), false},
+		{"Review depth", fmt.Sprint(cfg.ReviewDepth), false},
+		{"Lichess beta", onOff[cfg.LichessBeta], false},
+		{"TV channel", channelLabel(cfg.DefaultWatch), true},
+		{"Confirm resign", onOff[cfg.ConfirmResign], true},
+		{"Lichess account", account, true},
 	}
 	rows := make([]string, len(items))
-	for i, item := range items {
-		value := t.Muted().Render(item.value)
+	for i, it := range items {
+		value := t.Muted().Render(it.value)
 		if i == s.selected {
-			value = t.Accent().Render(item.value)
+			value = t.Accent().Render(it.value)
 		}
-		rows[i] = padRight(s.ctx.item(item.label, i == s.selected), rowWidth-2-lipgloss.Width(value)) + value
+		label := s.ctx.item(it.label, i == s.selected)
+		if it.beta && !cfg.LichessBeta {
+			label, value = t.Faint().Render(it.label), t.Faint().Render(it.value)
+		}
+		rows[i] = padRight(label, rowWidth-2-lipgloss.Width(value)) + value
 	}
 	lines := []string{t.Title().Render("Settings"), "", s.ctx.menu(rows, s.selected, len(rows), rowWidth, true)}
-	if s.note.text != "" {
+	if s.editing != nil {
+		lines = append(lines, "", s.ctx.field("Engine path", *s.editing), t.Faint().Render("any UCI engine · empty finds Stockfish · enter save · esc cancel"))
+	} else if s.note.text != "" {
 		lines = append(lines, "", s.ctx.note(s.note))
 	}
-	if height >= 16 {
-		stockfish := "not installed · brew install stockfish"
-		if found, err := engine.NewStockfish(cfg.StockfishPath); err == nil {
-			stockfish = found.Path()
+	if height >= 24 && s.editing == nil {
+		enginePath := "brew install stockfish, or set a path above"
+		if found, err := s.ctx.Session.Engine(); err == nil {
+			enginePath = found.Path()
 		}
 		info := func(label, value string) string {
-			return t.Faint().Render(padRight(label, 11) + shortPath(value, rowWidth-13))
+			return t.Faint().Render(padRight(label, 9) + shortPath(value, rowWidth-11))
 		}
-		lines = append(lines, "", "",
-			info("Stockfish", stockfish),
+		lines = append(lines, "",
+			info("Engine", enginePath),
 			info("Config", s.ctx.Session.Paths.ConfigFile),
 			info("Library", s.ctx.Session.Paths.Database))
 	}
@@ -196,7 +280,12 @@ func sample(profile string) string {
 }
 
 func (s *Settings) Hints() []widgets.Hint {
-	return []widgets.Hint{{Key: "↑↓", Label: "select"}, {Key: "←→", Label: "change"}, {Key: "enter", Label: "toggle"}}
+	if s.editing != nil {
+		return []widgets.Hint{{Key: "enter", Label: "save"}, {Key: "esc", Label: "cancel"}}
+	}
+	return []widgets.Hint{{Key: "↑↓", Label: "select"}, {Key: "←→", Label: "change"}, {Key: "enter", Label: "edit"}}
 }
 
 func (s *Settings) Status() string { return "changes save automatically" }
+
+func (s *Settings) CapturesKey(string) bool { return s.editing != nil }

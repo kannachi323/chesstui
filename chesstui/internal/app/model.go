@@ -9,7 +9,18 @@ import (
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
 )
 
-var labels = []string{"Home", "Play", "Watch", "Puzzles", "Study", "Learn", "Settings"}
+var labels = []string{"Home", "Play", "Analyze", "Read", "Puzzles", "Learn", "Lichess", "Settings"}
+
+const (
+	tabHome = iota
+	tabPlay
+	tabAnalyze
+	tabRead
+	tabPuzzles
+	tabLearn
+	tabLichess
+	tabSettings
+)
 
 // Smallest terminal the layout supports; below it a resize prompt is shown.
 const minWidth, minHeight = 40, 12
@@ -40,11 +51,12 @@ func New(current *session.Session) Model {
 		darkTerm: true,
 		screens: []screens.Screen{
 			screens.NewHome(ctx),
-			screens.NewPlay(ctx),
-			screens.NewWatch(ctx),
+			screens.NewLocal(ctx),
+			screens.NewAnalyze(ctx),
+			screens.NewRead(ctx),
 			screens.NewPuzzles(ctx),
-			screens.NewStudy(ctx),
 			screens.NewLearn(ctx),
+			screens.NewLichess(ctx),
 			screens.NewSettings(ctx),
 		},
 	}
@@ -73,6 +85,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case screens.OpenScreenMsg:
 		m.focus = focusContent
 		return m, m.activate(msg.Index)
+	case screens.OpenAnalyzeMsg:
+		m.focus = focusContent
+		activate := m.activate(tabAnalyze)
+		return m, tea.Batch(activate, m.screens[tabAnalyze].(*screens.Analyze).Open(msg.GameID))
+	case screens.ImportToAnalyzeMsg:
+		m.focus = focusContent
+		activate := m.activate(tabAnalyze)
+		return m, tea.Batch(activate, m.screens[tabAnalyze].(*screens.Analyze).ImportPGN(msg.PGN, "book"))
+	case screens.OpenBookMsg:
+		m.focus = focusContent
+		activate := m.activate(tabRead)
+		return m, tea.Batch(activate, m.screens[tabRead].Update(msg))
+	case screens.TabsChangedMsg:
+		if m.pos(m.active) < 0 {
+			return m, m.activate(tabSettings)
+		}
+		m.nav = m.pos(m.active)
+		return m, nil
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	case tea.PasteMsg:
@@ -110,8 +140,17 @@ func (m Model) render() string {
 	if current, ok := m.session.Account(); ok {
 		account = current.Username
 	}
-	header := widgets.Header(*m.theme, labels, m.active, m.nav, m.focus == focusNavigation, account, width)
 	screen := m.screens[m.active]
+	if full, ok := screen.(interface{ Fullscreen() bool }); ok && full.Fullscreen() {
+		body := fitViewport(screen.View(min(140, max(1, width-4)), height-2), width-4, height-2)
+		return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, body)
+	}
+	tabs := m.tabs()
+	visible := make([]string, len(tabs))
+	for i, index := range tabs {
+		visible[i] = labels[index]
+	}
+	header := widgets.Header(*m.theme, visible, m.pos(m.active), m.nav, m.focus == focusNavigation, account, width)
 	status := ""
 	if text := screen.Status(); text != "" {
 		status = m.theme.Muted().Render(text)
@@ -135,12 +174,34 @@ func (m Model) render() string {
 	return header + "\n\n" + canvas + "\n\n" + footer
 }
 
+// tabs lists the visible screens; the Lichess tab hides when its beta is off.
+func (m Model) tabs() []int {
+	tabs := make([]int, 0, len(m.screens))
+	for index := range m.screens {
+		if index == tabLichess && !m.session.Config.LichessBeta {
+			continue
+		}
+		tabs = append(tabs, index)
+	}
+	return tabs
+}
+
+// pos is a screen's position in the tab bar, or -1 when hidden.
+func (m Model) pos(index int) int {
+	for i, tab := range m.tabs() {
+		if tab == index {
+			return i
+		}
+	}
+	return -1
+}
+
 var globalHints = []widgets.Hint{
-	{Key: "1–7", Label: "jump to a section"},
+	{Key: "1–8", Label: "jump to a section"},
 	{Key: "H L", Label: "previous / next section"},
 	{Key: "gt gT", Label: "next / previous section"},
 	{Key: "tab", Label: "focus the tab bar"},
-	{Key: ":", Label: "command, e.g. :watch :q"},
+	{Key: ":", Label: "command, e.g. :read :q"},
 	{Key: "esc", Label: "back to the tab bar"},
 	{Key: "?", Label: "close help"},
 	{Key: "q", Label: "quit"},
