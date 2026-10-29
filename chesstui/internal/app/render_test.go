@@ -88,11 +88,36 @@ func TestHelpOverlayOpensAndCloses(t *testing.T) {
 	model := newTestModel(t)
 	model.width, model.height = 100, 30
 	model = pressRunes(model, "?")
-	if !model.help || !strings.Contains(ansi.Strip(model.render()), "EVERYWHERE") {
+	if !model.help || !strings.Contains(ansi.Strip(model.render()), "Everywhere") {
 		t.Fatal("help did not open")
 	}
 	model = pressRunes(model, "?")
 	if model.help {
 		t.Fatal("help did not close")
+	}
+}
+
+func TestUnknownCommandIsReported(t *testing.T) {
+	model := newTestModel(t)
+	model.width, model.height = 100, 30
+	model = pressRunes(model, ":nope")
+	model = pressSpecial(model, tea.KeyEnter)
+	if !strings.Contains(ansi.Strip(model.render()), "Unknown command :nope") {
+		t.Fatal("unknown command was silently ignored")
+	}
+	model = pressRunes(model, "j")
+	if model.flash != "" {
+		t.Fatal("the message should clear on the next key")
+	}
+}
+
+func TestPasteGoesOnlyToTheVisibleScreen(t *testing.T) {
+	model := newTestModel(t)
+	model.width, model.height = 100, 30
+	model = pressRunes(model, "5") // Study opens with a username prompt
+	updated, _ := model.Update(tea.PasteMsg{Content: "DrNykterstein\n"})
+	model = updated.(Model)
+	if !strings.Contains(ansi.Strip(model.render()), "DrNykterstein") {
+		t.Fatalf("paste missing:\n%s", ansi.Strip(model.render()))
 	}
 }

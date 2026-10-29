@@ -37,6 +37,12 @@ type Activator interface {
 	Activate() tea.Cmd
 }
 
+// QuitGuard is implemented by screens that should confirm before the app
+// quits, such as Play during a live online game.
+type QuitGuard interface {
+	QuitWarning() bool
+}
+
 // KeyCapturer is implemented by screens that sometimes need keys the app
 // would otherwise treat as global shortcuts (text fields, move entry).
 type KeyCapturer interface {
@@ -262,6 +268,15 @@ func (t *textInput) handle(key string) bool {
 		t.value += key
 	}
 	return true
+}
+
+// paste inserts pasted text, dropping newlines and disallowed characters.
+func (t *textInput) paste(content string) {
+	for _, r := range strings.TrimSpace(strings.ReplaceAll(content, "\n", "")) {
+		if t.allowed == nil || t.allowed(string(r)) {
+			t.value += string(r)
+		}
+	}
 }
 
 func (c Context) field(label string, t textInput) string {

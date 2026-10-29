@@ -8,9 +8,8 @@ import (
 	"github.com/kannachi323/chesstui/internal/ui/theme"
 )
 
-const Wordmark = `█▀▀ █ █ █▀▀ █▀▀ █▀▀ ▀█▀ █ █ █
-█   █▀█ █▀▀ ▀▀█ ▀▀█  █  █ █ █
-▀▀▀ ▀ ▀ ▀▀▀ ▀▀▀ ▀▀▀  ▀  ▀▀▀ ▀`
+// margin is the left and right inset of the header and footer rows.
+const margin = "  "
 
 // Hint is one key and what it does, shown in the footer and the help overlay.
 type Hint struct {
@@ -41,7 +40,7 @@ func Header(t theme.Theme, labels []string, active, cursor int, navFocused bool,
 	}
 	nav := strings.Join(tabs, "")
 	// Narrow terminals: keep the active tab readable and number the rest.
-	if lipgloss.Width(brand)+lipgloss.Width(nav)+lipgloss.Width(right)+4 > width {
+	if lipgloss.Width(brand)+lipgloss.Width(nav)+lipgloss.Width(right)+8 > width {
 		for i := range labels {
 			if i != active && !(navFocused && i == cursor) {
 				tabs[i] = tab(i, string(rune('1'+i)))
@@ -49,43 +48,47 @@ func Header(t theme.Theme, labels []string, active, cursor int, navFocused bool,
 		}
 		nav = strings.Join(tabs, "")
 	}
-	if lipgloss.Width(brand)+lipgloss.Width(nav)+lipgloss.Width(right)+4 > width {
+	if lipgloss.Width(brand)+lipgloss.Width(nav)+lipgloss.Width(right)+8 > width {
 		right = ""
 	}
 	if lipgloss.Width(brand)+lipgloss.Width(nav)+2 > width {
 		brand = t.Accent().Bold(true).Render("♞")
 	}
-	return spread(brand, nav, right, width)
+	if right != "" {
+		right += margin
+	}
+	return spread(margin+brand, nav, right, width)
 }
 
 // Footer shows contextual key hints on the left and a status note on the
 // right. Hints that do not fit are dropped from the end; "? help" stays.
 func Footer(t theme.Theme, hints []Hint, status string, width int) string {
 	width = max(1, width-1) // never write the last cell; some terminals wrap
+	status = ansi.Truncate(status, max(0, width/2), "…")
+	statusWidth := lipgloss.Width(status)
 	help := renderHint(t, Hint{"?", "help"})
-	parts := make([]string, 0, len(hints))
-	used := lipgloss.Width(help)
+	room := width - 2*len(margin) - statusWidth - 3 - lipgloss.Width(help)
+	parts := make([]string, 0, len(hints)+1)
 	for _, hint := range hints {
 		rendered := renderHint(t, hint)
-		if used+lipgloss.Width(rendered)+3 > width*3/4 && len(parts) > 0 {
+		if lipgloss.Width(rendered)+3 > room {
 			break
 		}
 		parts = append(parts, rendered)
-		used += lipgloss.Width(rendered) + 3
+		room -= lipgloss.Width(rendered) + 3
 	}
 	parts = append(parts, help)
-	left := " " + strings.Join(parts, "   ")
-	room := width - lipgloss.Width(left) - 3
-	if room < 8 || status == "" {
+	left := margin + strings.Join(parts, "   ")
+	if status == "" {
 		return ansi.Truncate(left, width, "")
 	}
-	return spread(left, "", ansi.Truncate(status, room, "…")+" ", width)
+	return spread(left, "", status+margin, width)
 }
 
 // CommandLine replaces the footer while typing a ":" command.
 func CommandLine(t theme.Theme, command string, width int) string {
-	line := " " + t.Accent().Bold(true).Render(":") + t.Body().Render(command) + t.Accent().Render("▏")
-	tail := t.Faint().Render("enter run · esc cancel ")
+	line := margin + t.Accent().Bold(true).Render(":") + t.Body().Render(command) + t.Accent().Render("▏")
+	tail := t.Faint().Render("enter run · esc cancel") + margin
 	return spread(line, "", tail, max(1, width-1))
 }
 
@@ -100,7 +103,7 @@ func HelpPanel(t theme.Theme, title string, global, local []Hint) string {
 		for _, hint := range hints {
 			keyWidth = max(keyWidth, lipgloss.Width(hint.Key))
 		}
-		lines := []string{t.Faint().Render(strings.ToUpper(heading)), ""}
+		lines := []string{t.Title().Render(heading), ""}
 		for _, hint := range hints {
 			lines = append(lines, t.Key().Width(keyWidth+2).Render(hint.Key)+t.Muted().Render(hint.Label))
 		}

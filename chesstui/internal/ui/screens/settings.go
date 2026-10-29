@@ -3,11 +3,13 @@ package screens
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kannachi323/chesstui/internal/config"
+	"github.com/kannachi323/chesstui/internal/engine"
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
 )
 
@@ -155,11 +157,32 @@ func (s *Settings) View(width, height int) string {
 		lines = append(lines, "", s.ctx.note(s.note))
 	}
 	if height >= 16 {
+		stockfish := "not installed · brew install stockfish"
+		if found, err := engine.NewStockfish(cfg.StockfishPath); err == nil {
+			stockfish = found.Path()
+		}
+		info := func(label, value string) string {
+			return t.Faint().Render(padRight(label, 11) + shortPath(value, rowWidth-13))
+		}
 		lines = append(lines, "", "",
-			t.Faint().Render("config  "+s.ctx.Session.Paths.ConfigFile),
-			t.Faint().Render("data    "+s.ctx.Session.Paths.Database))
+			info("Stockfish", stockfish),
+			info("Config", s.ctx.Session.Paths.ConfigFile),
+			info("Library", s.ctx.Session.Paths.Database))
 	}
 	return lipgloss.NewStyle().MaxWidth(width).Render(strings.Join(lines, "\n"))
+}
+
+// shortPath abbreviates the home directory and trims the front of long
+// paths so the end, which names the file, stays visible.
+func shortPath(path string, width int) string {
+	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(path, home) {
+		path = "~" + strings.TrimPrefix(path, home)
+	}
+	runes := []rune(path)
+	if width > 1 && len(runes) > width {
+		path = "…" + string(runes[len(runes)-width+1:])
+	}
+	return path
 }
 
 func sample(profile string) string {

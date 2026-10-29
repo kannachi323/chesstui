@@ -104,6 +104,11 @@ func (s *Study) load(username string) tea.Cmd {
 
 func (s *Study) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if s.prompt != nil {
+			s.prompt.paste(msg.Content)
+		}
+		return nil
 	case studyLoadedMsg:
 		s.loading = false
 		if msg.err != nil && len(msg.games) == 0 {

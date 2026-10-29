@@ -26,6 +26,12 @@ import (
 // go test ./internal/app -run Screenshots -shots ../../../docs/screenshots
 var shotsDir = flag.String("shots", "", "write SVG screenshots to this directory")
 
+// tvDelay spaces out fake TV moves so a test can watch them arrive.
+var tvDelay time.Duration
+
+// afterUpdate, when set, sees the model after every message drive handles.
+var afterUpdate func(Model)
+
 type staticTokens struct{ token string }
 
 func (s staticTokens) Load() (string, error) { return s.token, nil }
@@ -101,6 +107,10 @@ func fakeLichess(t *testing.T) *httptest.Server {
 		for i, move := range moves {
 			_ = position.ApplyUCI(move)
 			fmt.Fprintf(w, `{"t":"fen","d":{"fen":%q,"lm":%q,"wc":%d,"bc":%d}}`+"\n", position.FEN(), move, 180-i*2, 176-i*3)
+			if tvDelay > 0 {
+				w.(http.Flusher).Flush()
+				time.Sleep(tvDelay)
+			}
 		}
 		w.(http.Flusher).Flush()
 		<-r.Context().Done()
@@ -145,6 +155,9 @@ func drive(m Model, msgs ...tea.Msg) Model {
 		queue = queue[1:]
 		updated, cmd := m.Update(msg)
 		m = updated.(Model)
+		if afterUpdate != nil {
+			afterUpdate(m)
+		}
 		queue = append(queue, run(cmd)...)
 	}
 	return m
@@ -166,6 +179,7 @@ type scene struct {
 	token         string
 	keys          []string
 	want          []string
+	card          bool // also render a tighter 84x26 frame for the website
 }
 
 func TestScreenshots(t *testing.T) {
@@ -176,62 +190,75 @@ func TestScreenshots(t *testing.T) {
 	scenes := []scene{
 		{name: "home", width: 100, height: 30, want: []string{"Play", "Watch", "guest"}},
 		{name: "watch", width: 120, height: 36, keys: []string{"3"}, want: []string{"DrNykterstein", "live"}},
-		{name: "puzzle", width: 110, height: 32, keys: []string{"4", "space", "enter"}, want: []string{"Puzzle", "to move"}},
-		{name: "play", width: 120, height: 36, token: "lio_fake", keys: []string{"2", "enter", "N", "c", "3"}, want: []string{"Lichess AI · 5", "kannachi323", "Nc3"}},
-		{name: "study", width: 120, height: 36, keys: []string{"5", "D", "r", "N", "y", "k", "t", "e", "r", "s", "t", "e", "i", "n", "enter", "enter", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"}, want: []string{"move 12 of", "DrNykterstein"}},
-		{name: "learn-light", width: 110, height: 32, light: true, keys: []string{"6", "j", "j", "j"}, want: []string{"En passant"}},
-		{name: "help", width: 100, height: 30, keys: []string{"4", "?"}, want: []string{"EVERYWHERE", "hint"}},
+		{name: "puzzle", card: true, width: 110, height: 32, keys: []string{"4", "space", "enter"}, want: []string{"Puzzle", "to move"}},
+		{name: "play", card: true, width: 120, height: 36, token: "lio_fake", keys: []string{"2", "enter", "N", "c", "3"}, want: []string{"Lichess AI · 5", "kannachi323", "Nc3"}},
+		{name: "study", card: true, width: 120, height: 36, keys: []string{"5", "D", "r", "N", "y", "k", "t", "e", "r", "s", "t", "e", "i", "n", "enter", "enter", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right"}, want: []string{"move 12 of", "DrNykterstein"}},
+		{name: "learn-light", card: true, width: 110, height: 32, light: true, keys: []string{"6", "j", "j", "j"}, want: []string{"En passant"}},
+		{name: "help", width: 100, height: 30, keys: []string{"4", "?"}, want: []string{"Everywhere", "hint"}},
 		{name: "compact-80x24", width: 80, height: 24, keys: []string{"4"}, want: []string{"Puzzle"}},
+		{name: "play-menu-80x24", width: 80, height: 24, keys: []string{"2"}, want: []string{"Lichess AI", "Color", "not installed"}},
+		{name: "settings", width: 100, height: 30, keys: []string{"7"}, want: []string{"Settings", "Stockfish"}},
+		{name: "wide-180x50", width: 180, height: 50, keys: []string{"4"}, want: []string{"Puzzle"}},
 	}
-	for _, sc := range scenes {
-		t.Run(sc.name, func(t *testing.T) {
-			store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "shots.db"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer store.Close()
-			cfg := config.Default()
-			cfg.LichessURL = server.URL
-			var tokens interface {
-				Load() (string, error)
-				Save(string) error
-				Delete() error
-			} = memoryTokens{}
-			if sc.token != "" {
-				tokens = staticTokens{sc.token}
-			}
-			model := New(session.New(cfg, config.Paths{ConfigFile: filepath.Join(t.TempDir(), "config.json"), Database: "~/.local/share/chesstui/chesstui.db"}, store, tokens))
-			background := tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}}
-			if sc.light {
-				background = tea.BackgroundColorMsg{Color: color.RGBA{0xfa, 0xf9, 0xf6, 0xff}}
-			}
-			model = drive(model, tea.WindowSizeMsg{Width: sc.width, Height: sc.height}, background)
-			model = drive(model, run(model.Init())...)
-			for _, k := range sc.keys {
-				model = drive(model, key(k))
-			}
-			frame := model.render()
-			plain := ansi.Strip(frame)
-			for _, want := range sc.want {
-				if !strings.Contains(plain, want) {
-					t.Fatalf("frame missing %q:\n%s", want, plain)
+	for _, base := range scenes {
+		variants := []scene{base}
+		if base.card && *shotsDir != "" {
+			card := base
+			card.name, card.width, card.height, card.want = base.name+"-card", 84, 26, nil
+			variants = append(variants, card)
+		}
+		for _, sc := range variants {
+			t.Run(sc.name, func(t *testing.T) {
+				store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "shots.db"))
+				if err != nil {
+					t.Fatal(err)
 				}
-			}
-			if *shotsDir == "" {
-				return
-			}
-			opts := termshot.Options{Background: "#111214", Foreground: "#e7e4dc"}
-			if sc.light {
-				opts = termshot.Options{Background: "#faf9f6", Foreground: "#22211d"}
-			}
-			if err := os.MkdirAll(*shotsDir, 0o755); err != nil {
-				t.Fatal(err)
-			}
-			path := filepath.Join(*shotsDir, sc.name+".svg")
-			if err := os.WriteFile(path, []byte(termshot.SVG(frame, opts)), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		})
+				defer store.Close()
+				cfg := config.Default()
+				cfg.LichessURL = server.URL
+				// Pin "no Stockfish" so shots match on machines that have it.
+				cfg.StockfishPath = filepath.Join(t.TempDir(), "no-stockfish")
+				var tokens interface {
+					Load() (string, error)
+					Save(string) error
+					Delete() error
+				} = memoryTokens{}
+				if sc.token != "" {
+					tokens = staticTokens{sc.token}
+				}
+				model := New(session.New(cfg, config.Paths{ConfigFile: filepath.Join(t.TempDir(), "config.json"), Database: "~/.local/share/chesstui/chesstui.db"}, store, tokens))
+				background := tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}}
+				if sc.light {
+					background = tea.BackgroundColorMsg{Color: color.RGBA{0xfa, 0xf9, 0xf6, 0xff}}
+				}
+				model = drive(model, tea.WindowSizeMsg{Width: sc.width, Height: sc.height}, background)
+				model = drive(model, run(model.Init())...)
+				for _, k := range sc.keys {
+					model = drive(model, key(k))
+				}
+				frame := model.render()
+				plain := ansi.Strip(frame)
+				for _, want := range sc.want {
+					if !strings.Contains(plain, want) {
+						t.Fatalf("frame missing %q:\n%s", want, plain)
+					}
+				}
+				if *shotsDir == "" {
+					return
+				}
+				opts := termshot.Options{Background: "#111214", Foreground: "#e7e4dc"}
+				if sc.light {
+					opts = termshot.Options{Background: "#faf9f6", Foreground: "#22211d"}
+				}
+				if err := os.MkdirAll(*shotsDir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				path := filepath.Join(*shotsDir, sc.name+".svg")
+				if err := os.WriteFile(path, []byte(termshot.SVG(frame, opts)), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
 	}
 }
 
@@ -267,5 +294,73 @@ func TestDailyPuzzleSolvesEndToEnd(t *testing.T) {
 	stats, err := store.PuzzleStats(context.Background())
 	if err != nil || stats.Solved != 1 {
 		t.Fatalf("stats=%+v err=%v", stats, err)
+	}
+}
+
+// TestHeroFrames records the Watch screen as Lichess TV moves arrive, for
+// the animated hero on the website. It only runs when writing shots.
+func TestHeroFrames(t *testing.T) {
+	if *shotsDir == "" {
+		t.Skip("run with -shots")
+	}
+	tvDelay = 40 * time.Millisecond
+	defer func() { tvDelay = 0 }()
+	server := fakeLichess(t)
+	store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "hero.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	cfg := config.Default()
+	cfg.LichessURL = server.URL
+	model := New(session.New(cfg, config.Paths{}, store, memoryTokens{}))
+	model = drive(model, tea.WindowSizeMsg{Width: 104, Height: 30}, tea.BackgroundColorMsg{Color: color.RGBA{0x11, 0x12, 0x14, 0xff}})
+
+	frames, last := []string{}, ""
+	afterUpdate = func(m Model) {
+		frame := m.render()
+		plain := ansi.Strip(frame)
+		if plain != last && strings.Contains(plain, "live ·") {
+			frames = append(frames, frame)
+			last = plain
+		}
+	}
+	defer func() { afterUpdate = nil }()
+	model = drive(model, key("3"))
+	if len(frames) < 20 {
+		t.Fatalf("captured %d frames", len(frames))
+	}
+	frames = frames[len(frames)-16:]
+	dir := filepath.Join(*shotsDir, "hero")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for i, frame := range frames {
+		svg := termshot.SVG(frame, termshot.Options{Background: "#111214", Foreground: "#e7e4dc"})
+		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("%02d.svg", i)), []byte(svg), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestQuitAsksTwiceDuringAnOnlineGame(t *testing.T) {
+	server := fakeLichess(t)
+	store, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "quit.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	cfg := config.Default()
+	cfg.LichessURL = server.URL
+	model := New(session.New(cfg, config.Paths{}, store, staticTokens{"lio_fake"}))
+	model = drive(model, tea.WindowSizeMsg{Width: 120, Height: 36})
+	model = drive(model, key("2"), key("enter"))
+	updated, cmd := model.Update(key("q"))
+	model = updated.(Model)
+	if cmd != nil || !strings.Contains(ansi.Strip(model.render()), "press q again") {
+		t.Fatalf("first q should warn during a live game (cmd=%v):\n%s", cmd != nil, ansi.Strip(model.render()))
+	}
+	if _, cmd = model.Update(key("q")); cmd == nil {
+		t.Fatal("second q should quit")
 	}
 }

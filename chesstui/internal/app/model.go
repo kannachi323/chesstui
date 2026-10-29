@@ -28,6 +28,7 @@ type Model struct {
 	width    int
 	height   int
 	help     bool
+	flash    string // one-off footer message, cleared by the next key
 }
 
 func New(current *session.Session) Model {
@@ -74,6 +75,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.activate(msg.Index)
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+	case tea.PasteMsg:
+		// Only the visible screen's text field should receive a paste.
+		return m, m.screens[m.active].Update(msg)
 	}
 	// Commands can finish after the user changes sections. Let every screen
 	// inspect non-key messages so its own asynchronous result is never lost.
@@ -108,7 +112,14 @@ func (m Model) render() string {
 	}
 	header := widgets.Header(*m.theme, labels, m.active, m.nav, m.focus == focusNavigation, account, width)
 	screen := m.screens[m.active]
-	footer := widgets.Footer(*m.theme, screen.Hints(), screen.Status(), width)
+	status := ""
+	if text := screen.Status(); text != "" {
+		status = m.theme.Muted().Render(text)
+	}
+	if m.flash != "" {
+		status = m.theme.Accent().Render(m.flash)
+	}
+	footer := widgets.Footer(*m.theme, screen.Hints(), status, width)
 	if m.mode == modeCommand {
 		footer = widgets.CommandLine(*m.theme, m.command, width)
 	}

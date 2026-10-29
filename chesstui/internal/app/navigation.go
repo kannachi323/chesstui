@@ -14,13 +14,6 @@ const (
 	focusNavigation
 )
 
-func (f focusArea) String() string {
-	if f == focusNavigation {
-		return "NAV"
-	}
-	return "CONTENT"
-}
-
 type editorMode uint8
 
 const (
@@ -28,15 +21,10 @@ const (
 	modeCommand
 )
 
-func (m editorMode) String() string {
-	if m == modeCommand {
-		return "COMMAND"
-	}
-	return "NORMAL"
-}
-
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+	quitArmed := m.flash == quitWarning
+	m.flash = ""
 	if key == "ctrl+c" {
 		return m, tea.Quit
 	}
@@ -64,6 +52,10 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.help = true
 		return m, nil
 	case "q":
+		if warning := m.quitWarning(); warning != "" && !quitArmed {
+			m.flash = quitWarning
+			return m, nil
+		}
 		return m, tea.Quit
 	case "esc":
 		if m.focus == focusContent {
@@ -166,8 +158,14 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 	command := strings.TrimSpace(strings.TrimPrefix(m.command, ":"))
 	m.mode, m.command = modeNormal, ""
 	switch command {
-	case "q", "quit", "qa", "qall":
+	case "q", "quit", "qa", "qall", "q!":
+		if m.quitWarning() != "" && command != "q!" {
+			m.flash = "A game is in progress · :q! to quit anyway"
+			return m, nil
+		}
 		return m, tea.Quit
+	case "":
+		return m, nil
 	case "help", "h":
 		m.help = true
 	case "tn", "tabnext":
@@ -184,8 +182,21 @@ func (m Model) executeCommand() (tea.Model, tea.Cmd) {
 				return m, m.activate(index)
 			}
 		}
+		m.flash = "Unknown command :" + command + " · ? for help"
 	}
 	return m, nil
+}
+
+const quitWarning = "A game is in progress · press q again to quit"
+
+// quitWarning asks the screens whether quitting now would abandon something.
+func (m Model) quitWarning() string {
+	for _, screen := range m.screens {
+		if guard, ok := screen.(screens.QuitGuard); ok && guard.QuitWarning() {
+			return quitWarning
+		}
+	}
+	return ""
 }
 
 // activate shows a screen and gives it a chance to load on first open.

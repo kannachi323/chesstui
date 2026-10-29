@@ -1,3 +1,5 @@
+> Historical: the July 2026 report for the first Go rewrite. For the current state, see the [README](../README.md) and [RELEASE.md](RELEASE.md).
+
 # ChessTUI implementation report
 
 Date: July 16, 2026  

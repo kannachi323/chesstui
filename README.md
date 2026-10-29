@@ -1,95 +1,79 @@
-# ChessTUI
+<p align="center">
+  <img src="docs/screenshots/watch.svg" alt="chesstui watching a live Lichess TV game" width="900">
+</p>
 
-ChessTUI is a polished, local-first chess workspace for the terminal. It is written in Go with Bubble Tea and connects directly to Lichess—there is no ChessTUI server and no account password ever passes through the app.
+<h1 align="center">chesstui</h1>
 
-## What works
+<p align="center">Chess in the terminal. Play, watch and train on Lichess from your shell.</p>
 
-- Play Lichess AI or challenge another Lichess user through the Board API.
-- Play locally against an installed Stockfish engine.
-- Watch every Lichess TV channel natively, with a local back/forward position timeline.
-- Browse live Lichess streamers and top broadcasts, opening video in the system browser.
-- Solve the daily puzzle, request Lichess puzzles, or use a local SQLite collection.
-- Stream-import official Lichess CSV and `.zst` puzzle packs without loading them into memory.
-- Fetch recent games and studies, replay completed games, and analyze positions with local Stockfish.
-- Work through interactive lessons for movement, development, castling, and checkmate.
-- Keep puzzle attempts, games, and analysis in a private local database.
+<p align="center">
+  <a href="https://github.com/kannachi323/chesstui/actions/workflows/ci.yml"><img src="https://github.com/kannachi323/chesstui/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/kannachi323/chesstui/releases"><img src="https://img.shields.io/github/v/release/kannachi323/chesstui?display_name=tag&sort=semver" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License"></a>
+</p>
 
-Terminal protocols cannot embed browser iframes or safely render Twitch/YouTube video. ChessTUI therefore renders live chess positions itself and opens stream/broadcast video in your browser.
+## Features
 
-## Install from source
+- **Play**: Lichess AI (levels 1–8), challenge a friend, or play Stockfish offline, as white, black or random. Live clocks, draw offers, abort and resign.
+- **Watch**: every Lichess TV channel, rendered natively, with rewind. Streams and broadcasts open in your browser.
+- **Train**: the daily puzzle, more from Lichess, or millions offline from an imported [puzzle pack](https://database.lichess.org/#puzzles).
+- **Study**: open any public player's games and studies, replay move by move, and analyse with local Stockfish.
+- **Learn**: short interactive lessons, from the first pawn move to back-rank mate.
 
-Requirements: Go 1.26 or later. Stockfish is optional and only required for local engine play and completed-game analysis.
+Enter moves by typing them (`e4`, `Nf3`, `O-O`, `e7e8q`) or by walking the board with the arrow keys. Press `?` for every key.
+
+| | |
+|---|---|
+| ![Playing Lichess AI](docs/screenshots/play.svg) | ![Daily puzzle with a hint](docs/screenshots/puzzle.svg) |
+| ![Replaying a public game](docs/screenshots/study.svg) | ![Learn, on a light terminal](docs/screenshots/learn-light.svg) |
+
+## Install
+
+Download an archive for macOS, Linux or Windows from [Releases](https://github.com/kannachi323/chesstui/releases), unpack it, and put `chesstui` on your `PATH`.
+
+From source (Go 1.26+):
 
 ```sh
-git clone https://github.com/kannachi323/chess-cli.git
-cd chess-cli
-make build
-./build/chesstui
+git clone https://github.com/kannachi323/chesstui && make -C chesstui build
+./chesstui/build/chesstui
 ```
 
-On macOS, install Stockfish with `brew install stockfish`. On Linux, use your distribution package. You may also set an explicit `stockfish_path` in the generated config file shown on the Settings screen.
+Optional: install [Stockfish](https://stockfishchess.org) for offline games and analysis (`brew install stockfish`, or your distribution's package).
 
-## First run
+## Lichess account
 
-Press `2`, then `a` to connect Lichess. ChessTUI opens Lichess’s OAuth page and receives the result on a temporary loopback listener. The token is saved to the operating-system credential store, never to the config or SQLite database.
+Watching, puzzles, study and lessons need no account. To play on Lichess, open **Play → Lichess account**. Approve chesstui in your browser and you are signed in. Your password never passes through the app.
 
-Global keys:
+The token is kept in your OS keychain, or in a private `0600` file where no keychain exists. Signing out from **Settings** revokes it on Lichess. Stockfish is never available in an online game. See [SECURITY.md](SECURITY.md).
 
-| Key | Action |
+## Keys
+
+| Key | |
 |---|---|
-| `1`–`7` | Switch Home, Play, Watch, Puzzles, Study, Learn, Settings |
-| `h` `j` `k` `l` | Move within the focused region |
-| `Tab` / `Shift+Tab` | Alternate navbar and content focus |
-| `Ctrl-W k` / `Ctrl-W j` | Focus navbar / content, Vim split-style |
-| `gt` / `gT` | Next / previous workspace |
-| `H` / `L` | Previous / next workspace |
-| `:` | Enter command mode (`:home`, `:watch`, `:tn`, `:tp`, `:help`, `:q`) |
-| `Esc` | Return focus to the navbar |
-| `?` | Toggle help |
-| `q` / `Ctrl+C` | Quit |
+| `1`–`7` | Home, Play, Watch, Puzzles, Study, Learn, Settings |
+| `H` `L`, `gt` `gT` | previous / next section |
+| `tab`, `esc` | focus the tab bar |
+| `:` | commands: `:watch`, `:puzzles`, `:q` |
+| `?` | help for the current screen |
+| `q` | quit |
 
-The Neovim-style statusline remains attached to the terminal’s final row and shows the current mode, focus region, and contextual controls.
+## Data
 
-### Board rendering
-
-The board uses native terminal cells rather than HTML. It automatically chooses 6×3, 4×2, or compact 3×1 squares so their physical proportions remain square across normal terminal fonts. Settings offers solid Unicode, classic Unicode, and ASCII piece profiles.
-
-## Local data
-
-ChessTUI follows the XDG directory conventions on Linux and their equivalents on macOS:
-
-- configuration: `chesstui/config.json`
-- SQLite library: `chesstui/chesstui.db`
-- logs: `chesstui/chesstui.log`
-- Lichess token: OS keyring, or the ephemeral `CHESSTUI_LICHESS_TOKEN` environment override
-
-See [Architecture](docs/ARCHITECTURE.md), [Security](SECURITY.md), and the [implementation report](docs/IMPLEMENTATION_REPORT.md).
+Config, the SQLite library (puzzles, attempts, games, analysis) and logs live in your platform's standard folders. **Settings** shows the exact paths. The theme follows your terminal's background; set `"theme": "dark"` or `"light"` in the config to force one.
 
 ## Development
 
 ```sh
-make format
-make test
-make race
-make vet
-make run
+make test      # unit, render and end-to-end tests against a fake Lichess
+make race vet
+make shots     # regenerate docs/screenshots and the site's frames from the real UI
+make live      # smoke-test the real lichess.org API (about eight requests)
 ```
 
-### Website
+- The app is the Go module in [`chesstui/`](chesstui). See [Architecture](docs/ARCHITECTURE.md) and [Releasing](docs/RELEASE.md).
+- The landing page in [`web/`](web) builds with `npm run build --prefix web` and is deployed by Vercel from the repository root.
+- The original C version is in [`legacy/`](legacy).
 
-The keyboard-driven browser demo lives in `web/` and is configured for Vercel from the repository root.
+## License
 
-```sh
-npm install --prefix web
-npm run dev --prefix web
-```
-
-The website mirrors ChessTUI's navigation and appearance, uses Lichess's public APIs for TV, broadcasts, streamers, and puzzles, and supports browser-safe Lichess OAuth with PKCE. Authenticated users can create casual Lichess AI games, challenge another user, stream game state, and abort or resign from the browser. Moves can be entered as UCI, SAN, or a resulting FEN, or played entirely in NAV mode by moving a board cursor with `hjkl`, pressing Enter to select a piece, and pressing Enter again on a highlighted legal destination. Features that require local binaries, SQLite, or the operating-system keychain (notably the bundled Stockfish flow) remain in the native app.
-
-The maintained Go module lives in `chesstui/`. The prior C implementation remains in the repository for migration history but is not part of the ChessTUI build.
-
-## Fair play and licensing
-
-ChessTUI never exposes Stockfish to an active online game. Engine use is limited to local games and completed-game study, consistent with Lichess fair-play rules.
-
-ChessTUI is Apache-2.0 licensed. Stockfish is a separate GPL program discovered at runtime and is not bundled. Lichess trademarks and content belong to their respective owners.
+Apache-2.0. Stockfish is a separate GPL program found at runtime, not bundled. chesstui uses the [Lichess API](https://lichess.org/api) and is not affiliated with Lichess.

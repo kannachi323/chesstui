@@ -73,12 +73,30 @@ These were decided without the owner and are easy to revisit.
 - **Screenshots** are SVG files rendered from real UI frames against recorded public Lichess responses (`chesstui/internal/app/testdata`), so they always match the code.
 - **Web demo.** The keyboard-driven browser demo was replaced by a static landing page (see `web/`). The old demo's OAuth and gameplay code is in git history (commit `deab35f`) if you want it back.
 
+### Final polish pass
+
+- **No all-caps text.** The block-letter `CHESSTUI` wordmark, the `LESSONS` and `LESSON n OF m` labels, and the upper-cased help headings are now sentence case. Home shows a lowercase wordmark beside a starting-position board.
+- **One layout rhythm.** The header and footer share a two-cell inset. Every screen opens with one bold title or a tab row. Footer status text is muted, and a warning gets room ahead of key hints.
+- **Gaps closed.**
+  - Play has a Color option (random, white or black) for Lichess AI, challenges and offline games. As black offline, Stockfish moves first.
+  - The Stockfish row says "not installed" instead of failing.
+  - Opponent draw offers show up, and `o` accepts them.
+  - Esc cancels a sign-in or a pending challenge.
+  - During a live online game, `q` (or `:q`) asks again before quitting; `:q!` skips the question.
+  - Unknown `:` commands are reported.
+  - Pasting works in the username and path fields, and only the visible screen receives it.
+  - Puzzle-pack import accepts quoted, escaped or `~/` paths and shows live progress.
+  - Settings shows where Stockfish was found and shortens long paths.
+- **Landing page.** One typeface, Geist, self-hosted through `@fontsource-variable/geist` with no third-party font request. A 4–128 px spacing scale. The install command wraps only after a slash at 375 px.
+- **Before and after.** `docs/screenshots/before/` holds the screenshots from before this pass. The files in `docs/screenshots/` are the current ones.
+- **Release check.** `goreleaser check` passed with GoReleaser v2.19.0. A local `--snapshot` run built all five archives and `checksums.txt`, and the darwin/arm64 binary reported its stamped version. The binary was downloaded to a temporary folder, verified against the release checksums and deleted afterwards, so GoReleaser is still not installed.
+
 ## Remaining owner steps
 
 1. Rename the GitHub repository from `chess-cli` to `chesstui`, or adjust the release config as described above.
 2. Install Stockfish (`brew install stockfish`). Play one local game and analyse one replayed position to confirm the real engine works.
 3. Sign in to Lichess from **Play** once. Start an AI game, make a move, and resign, to exercise the Board API end to end with a real token.
-4. Optionally run `staticcheck ./...`. It was not installed here.
+4. Optionally run `staticcheck ./...`. It was not installed here. Install GoReleaser (`brew install goreleaser`) for future `make snapshot` runs.
 5. Set up the Homebrew tap, if you want one.
 6. Push the branch, open a PR into `main`, and tag `v2.0.0` after it merges.
 7. Deploy `web/` to Vercel. `vercel.json` already points at it.

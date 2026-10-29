@@ -1,6 +1,8 @@
 package screens
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -47,4 +49,20 @@ func TestHumanThemes(t *testing.T) {
 
 func domainPuzzle(fen, moves string) domain.Puzzle {
 	return domain.Puzzle{ID: "00008", FEN: fen, Moves: strings.Fields(moves), Source: "pack.csv"}
+}
+
+func TestCleanPathHandlesDroppedPaths(t *testing.T) {
+	home, _ := os.UserHomeDir()
+	for raw, want := range map[string]string{
+		"'/tmp/my pack.csv'":    "/tmp/my pack.csv",
+		`/tmp/my\ pack.csv.zst`: "/tmp/my pack.csv.zst",
+		" ~/packs/a.csv ":       filepath.Join(home, "packs/a.csv"),
+	} {
+		if got := cleanPath(raw); got != want {
+			t.Fatalf("cleanPath(%q) = %q, want %q", raw, got, want)
+		}
+	}
+	if groupThousands(4211337) != "4,211,337" {
+		t.Fatal(groupThousands(4211337))
+	}
 }

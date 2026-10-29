@@ -1,103 +1,55 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import App, { HeroTerminal, INSTALL_COMMAND, InstallCommand, REPO_URL } from './App'
 
-const api = vi.hoisted(() => ({
-  account: vi.fn(),
-  beginLogin: vi.fn(),
-  clearToken: vi.fn(),
-  createAIGame: vi.fn(),
-  createUserChallenge: vi.fn(),
-  currentGames: vi.fn(),
-  dailyPuzzle: vi.fn(),
-  endBoardGame: vi.fn(),
-  finishLogin: vi.fn(),
-  makeBoardMove: vi.fn(),
-  nextPuzzle: vi.fn(),
-  streamBoardGame: vi.fn(),
-  streamTV: vi.fn(),
-  streamUserEvents: vi.fn(),
-  watchDirectory: vi.fn(),
-}))
-
-vi.mock('./lichess', () => api)
-vi.mock('./ChessBoard', () => ({ ChessBoard: ({ label }: { label?: string }) => <div aria-label={label || 'Chess position'} /> }))
-
-import App from './App'
-
-const account = { id: 'kannachi', username: 'kannachi' }
-const gameFull = {
-  type: 'gameFull',
-  id: 'testgame',
-  initialFen: 'startpos',
-  white: { id: 'kannachi', name: 'kannachi', rating: 1500 },
-  black: { id: 'lichess', name: 'Lichess AI level 3' },
-  state: { type: 'gameState', moves: '', wtime: 300000, btime: 300000, winc: 3000, binc: 3000, status: 'started' },
+function visibleFrame() {
+  return screen.getAllByTestId('hero-frame').findIndex((img) => img.classList.contains('is-visible'))
 }
 
-describe('ChessTUI browser shell', () => {
+describe('landing page', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    api.finishLogin.mockResolvedValue('token')
-    api.account.mockResolvedValue(account)
-    api.currentGames.mockResolvedValue({ nowPlaying: [] })
-    api.createAIGame.mockResolvedValue({ id: 'testgame', player: 'white', fen: 'start' })
-    api.makeBoardMove.mockResolvedValue({ ok: true })
-    api.endBoardGame.mockResolvedValue({ ok: true })
-    api.streamBoardGame.mockImplementation((_token, _id, _signal, update) => {
-      update(gameFull)
-      return Promise.resolve()
+    vi.useFakeTimers()
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('leads with the headline, install command and GitHub link', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Chess in the terminal.')
+    expect(document.querySelector('.install code')?.textContent).toBe(INSTALL_COMMAND)
+    const github = screen.getAllByRole('link').filter((link) => link.getAttribute('href') === REPO_URL)
+    expect(github.length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('copies the install command', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<InstallCommand />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy install command' }))
     })
+    expect(writeText).toHaveBeenCalledWith(INSTALL_COMMAND)
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy()
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.getByRole('button', { name: 'Copy install command' })).toBeTruthy()
   })
 
-  it('hides sign in after authentication and keeps jk navigation reversible', async () => {
-    render(<App />)
-    await screen.findByText(/connected to Lichess/i)
-
-    fireEvent.keyDown(window, { key: '2' })
-    expect(await screen.findByText('Play Lichess AI level 3')).toBeTruthy()
-    expect(screen.queryByText('Connect Lichess account')).toBeNull()
-    expect(screen.getByText('Disconnect kannachi')).toBeTruthy()
-
-    fireEvent.keyDown(window, { key: '1' })
-    fireEvent.keyDown(window, { key: 'Tab' })
-    fireEvent.keyDown(window, { key: 'j' })
-    fireEvent.keyDown(window, { key: 'k' })
-    fireEvent.keyDown(window, { key: 'l' })
-    fireEvent.keyDown(window, { key: 'Enter' })
-    expect(await screen.findByRole('heading', { name: 'Play' })).toBeTruthy()
+  it('steps through the hero frames', () => {
+    render(<HeroTerminal interval={100} />)
+    expect(visibleFrame()).toBe(0)
+    act(() => vi.advanceTimersByTime(100))
+    expect(visibleFrame()).toBe(1)
+    act(() => vi.advanceTimersByTime(300))
+    expect(visibleFrame()).toBe(4)
   })
 
-  it('creates an AI game and submits a legal move through the Board API', async () => {
-    render(<App />)
-    await screen.findByText(/connected to Lichess/i)
-    fireEvent.keyDown(window, { key: '2' })
-    fireEvent.keyDown(window, { key: 'b' })
-
-    expect(await screen.findByText('kannachi vs Lichess AI level 3')).toBeTruthy()
-    expect(api.createAIGame).toHaveBeenCalledWith('token', 3)
-    expect(api.streamBoardGame).toHaveBeenCalled()
-
-    fireEvent.keyDown(window, { key: 'i' })
-    for (const key of 'e2e4') fireEvent.keyDown(window, { key })
-    fireEvent.keyDown(window, { key: 'Enter' })
-
-    await waitFor(() => expect(api.makeBoardMove).toHaveBeenCalledWith('token', 'testgame', 'e2e4'))
-    expect(screen.getByText('NAV')).toBeTruthy()
-  })
-
-  it('selects and drops a piece using the NAV board cursor', async () => {
-    render(<App />)
-    await screen.findByText(/connected to Lichess/i)
-    fireEvent.keyDown(window, { key: '2' })
-    fireEvent.keyDown(window, { key: 'b' })
-    await screen.findByText('kannachi vs Lichess AI level 3')
-
-    fireEvent.keyDown(window, { key: 'Enter' })
-    expect(await screen.findByText(/e2 selected/i)).toBeTruthy()
-    fireEvent.keyDown(window, { key: 'k' })
-    fireEvent.keyDown(window, { key: 'k' })
-    fireEvent.keyDown(window, { key: 'Enter' })
-
-    await waitFor(() => expect(api.makeBoardMove).toHaveBeenCalledWith('token', 'testgame', 'e2e4'))
+  it('holds the final frame when motion is reduced', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia
+    render(<HeroTerminal interval={100} />)
+    const last = screen.getAllByTestId('hero-frame').length - 1
+    expect(visibleFrame()).toBe(last)
+    act(() => vi.advanceTimersByTime(1000))
+    expect(visibleFrame()).toBe(last)
   })
 })

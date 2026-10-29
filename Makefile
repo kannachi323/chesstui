@@ -27,7 +27,10 @@ format:
 
 # Regenerate docs/screenshots from the real UI against recorded Lichess data.
 shots:
-	cd $(GO_DIR) && go test ./internal/app -run Screenshots -shots ../../../docs/screenshots
+	cd $(GO_DIR) && go test ./internal/app -run 'Screenshots|HeroFrames' -shots ../../../docs/screenshots
+	mkdir -p web/public/shots/hero
+	cp docs/screenshots/*-card.svg web/public/shots/
+	cp docs/screenshots/hero/*.svg web/public/shots/hero/
 
 # Hit the real lichess.org public API (about eight requests). Run rarely.
 live:

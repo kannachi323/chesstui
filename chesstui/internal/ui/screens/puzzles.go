@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -23,6 +25,8 @@ type puzzleLoadedMsg struct {
 }
 
 type puzzleRecordedMsg struct{ err error }
+type puzzleImportProgressMsg struct{ progress puzzles.Progress }
+
 type puzzleImportedMsg struct {
 	progress puzzles.Progress
 	err      error
@@ -43,6 +47,8 @@ type Puzzles struct {
 	failed    bool
 	solved    bool
 	importing *textInput
+
+	importUpdates chan tea.Msg
 }
 
 func NewPuzzles(ctx Context) *Puzzles { return &Puzzles{ctx: ctx} }
@@ -98,6 +104,11 @@ func preparePuzzle(puzzle domain.Puzzle) (domain.Puzzle, *chesscore.Position, er
 
 func (p *Puzzles) Update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
+	case tea.PasteMsg:
+		if p.importing != nil {
+			p.importing.paste(msg.Content)
+		}
+		return nil
 	case puzzleLoadedMsg:
 		p.loading = false
 		if msg.err != nil {
@@ -122,11 +133,18 @@ func (p *Puzzles) Update(msg tea.Msg) tea.Cmd {
 			p.note = errNote(msg.err)
 		}
 		return nil
+	case puzzleImportProgressMsg:
+		if p.importUpdates != nil {
+			p.note = busyNote(fmt.Sprintf("Importing · %s puzzles so far", groupThousands(msg.progress.Imported)))
+			return p.waitImport()
+		}
+		return nil
 	case puzzleImportedMsg:
+		p.importUpdates = nil
 		if msg.err != nil {
 			p.note = errNote(msg.err)
 		} else {
-			p.note = okNote("Imported %d puzzles · l to play one", msg.progress.Imported)
+			p.note = okNote("Imported %s puzzles · l to play one", groupThousands(msg.progress.Imported))
 		}
 		return nil
 	}
@@ -181,21 +199,64 @@ func (p *Puzzles) updateImport(key string) tea.Cmd {
 	case "esc":
 		p.importing = nil
 	case "enter":
-		path := strings.TrimSpace(p.importing.value)
+		path := cleanPath(p.importing.value)
 		p.importing = nil
-		if path == "" {
+		if path == "" || p.importUpdates != nil {
 			return nil
 		}
-		p.note = busyNote("Importing " + path)
+		p.note = busyNote("Importing " + filepath.Base(path))
 		store := p.ctx.Session.Store
-		return func() tea.Msg {
-			progress, err := puzzles.ImportFile(context.Background(), store, path, nil)
-			return puzzleImportedMsg{progress: progress, err: err}
-		}
+		updates := make(chan tea.Msg, 1)
+		p.importUpdates = updates
+		go func() {
+			last := time.Now()
+			progress, err := puzzles.ImportFile(context.Background(), store, path, func(progress puzzles.Progress) {
+				if time.Since(last) < 250*time.Millisecond {
+					return
+				}
+				last = time.Now()
+				select {
+				case updates <- puzzleImportProgressMsg{progress}:
+				default: // the UI is still drawing the previous update
+				}
+			})
+			updates <- puzzleImportedMsg{progress: progress, err: err}
+		}()
+		return p.waitImport()
 	default:
 		p.importing.handle(key)
 	}
 	return nil
+}
+
+func (p *Puzzles) waitImport() tea.Cmd {
+	updates := p.importUpdates
+	return func() tea.Msg { return <-updates }
+}
+
+// cleanPath accepts paths as terminals paste or drop them: quoted, with
+// backslash-escaped spaces, or starting with ~.
+func cleanPath(raw string) string {
+	path := strings.TrimSpace(raw)
+	if len(path) >= 2 && (path[0] == '\'' || path[0] == '"') && path[len(path)-1] == path[0] {
+		path = path[1 : len(path)-1]
+	} else {
+		path = strings.ReplaceAll(path, "\\ ", " ")
+	}
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			path = filepath.Join(home, strings.TrimPrefix(path, "~"))
+		}
+	}
+	return path
+}
+
+func groupThousands(n int) string {
+	text := fmt.Sprint(n)
+	for i := len(text) - 3; i > 0; i -= 3 {
+		text = text[:i] + "," + text[i:]
+	}
+	return text
 }
 
 func (p *Puzzles) submit(move string) tea.Cmd {

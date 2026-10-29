@@ -1,3 +1,5 @@
+> Historical: QA notes for the earlier browser demo in `web/`, which v2.0.0 replaced with a static landing page.
+
 # Design QA
 
 ## Sources

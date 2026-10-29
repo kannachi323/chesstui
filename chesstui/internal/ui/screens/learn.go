@@ -128,7 +128,7 @@ func (l *Learn) View(width, height int) string {
 		Theme: *t, Flipped: chesscore.NewPositionTurn(current.FEN) == chesscore.Black, Glyphs: l.ctx.Session.Config.Glyphs, LastMove: firstNonEmpty(lastMove(l.position), current.Last),
 	}, l.position)
 	side := func(w int) string {
-		lines := []string{t.Faint().Render(fmt.Sprintf("LESSON %d OF %d", l.selected+1, len(lessons))), t.Title().Render(current.Title), "",
+		lines := []string{t.Faint().Render(fmt.Sprintf("Lesson %d of %d", l.selected+1, len(lessons))), t.Title().Render(current.Title), "",
 			lipgloss.NewStyle().Width(w).Foreground(t.MutedColor).Render(current.Goal), ""}
 		if !(l.done[l.selected] && l.position.Ply() > 0) {
 			lines = append(lines, l.input.prompt(l.ctx))
@@ -150,7 +150,7 @@ func (l *Learn) View(width, height int) string {
 	if width < 100 {
 		return boardAndSide(board, render, side, compact, width, height)
 	}
-	list := lipgloss.NewStyle().Width(listWidth).Render(t.Faint().Render("LESSONS") + "\n\n" + l.ctx.menu(rows, l.selected, height-2, listWidth, true))
+	list := lipgloss.NewStyle().Width(listWidth).Render(t.Title().Render("Lessons") + "\n\n" + l.ctx.menu(rows, l.selected, height-2, listWidth, true))
 	return lipgloss.JoinHorizontal(lipgloss.Top, list, "    ", boardAndSide(board, render, side, compact, width-listWidth-4, height))
 }
 

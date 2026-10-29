@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 711 476" width="711" height="476" font-family="'JetBrains Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace" font-size="14">
+<rect width="711" height="476" rx="12" fill="#111214"/>
+<g text-rendering="geometricPrecision">
+<text x="40.60" y="33.43" fill="#e2b55c" font-weight="700" text-anchor="middle">♞</text><text x="53.20" y="33.43" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">chesstui</text><text x="145.60" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Home</text><text x="196.00" y="33.43" fill="#e2b55c" font-weight="700" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Play</text><text x="246.40" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Watch</text><text x="305.20" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Puzzles</text><text x="380.80" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Study</text><text x="439.60" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Learn</text><text x="498.40" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">Settings</text><text x="620.20" y="33.43" fill="#57554f" text-anchor="middle">○</text><text x="632.80" y="33.43" fill="#57554f" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">guest</text>
+
+
+
+
+
+
+
+<text x="137.20" y="179.03" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Play</text>
+
+<text x="141.40" y="215.43" fill="#e2b55c" font-weight="700" text-anchor="middle">›</text><text x="154.00" y="215.43" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="84.00" lengthAdjust="spacingAndGlyphs">Lichess AI</text><text x="485.80" y="215.43" fill="#57554f" text-anchor="middle">‹</text><text x="498.40" y="215.43" fill="#e2b55c" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">level 3</text><text x="569.80" y="215.43" fill="#57554f" text-anchor="middle">›</text>
+<text x="154.00" y="233.63" fill="#8f8c84" xml:space="preserve" textLength="151.20" lengthAdjust="spacingAndGlyphs">Challenge a player</text><text x="481.60" y="233.63" fill="#57554f" xml:space="preserve" textLength="92.40" lengthAdjust="spacingAndGlyphs">by username</text>
+<text x="154.00" y="251.83" fill="#e7e4dc" xml:space="preserve" textLength="151.20" lengthAdjust="spacingAndGlyphs">Stockfish, offline</text><text x="464.80" y="251.83" fill="#57554f" xml:space="preserve" textLength="109.20" lengthAdjust="spacingAndGlyphs">not installed</text>
+<text x="154.00" y="270.03" fill="#e7e4dc" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Clock</text><text x="548.80" y="270.03" fill="#57554f" xml:space="preserve" textLength="25.20" lengthAdjust="spacingAndGlyphs">5+3</text>
+<text x="154.00" y="288.23" fill="#e7e4dc" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Color</text><text x="523.60" y="288.23" fill="#57554f" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">random</text>
+<text x="154.00" y="306.43" fill="#e7e4dc" xml:space="preserve" textLength="126.00" lengthAdjust="spacingAndGlyphs">Lichess account</text><text x="464.80" y="306.43" fill="#57554f" xml:space="preserve" textLength="109.20" lengthAdjust="spacingAndGlyphs">not signed in</text>
+
+
+
+
+
+
+
+<text x="40.60" y="452.03" fill="#e7e4dc" font-weight="700" text-anchor="middle">↑</text><text x="49.00" y="452.03" fill="#e7e4dc" font-weight="700" text-anchor="middle">↓</text><text x="61.60" y="452.03" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">choose</text><text x="141.40" y="452.03" fill="#e7e4dc" font-weight="700" text-anchor="middle">←</text><text x="149.80" y="452.03" fill="#e7e4dc" font-weight="700" text-anchor="middle">→</text><text x="162.40" y="452.03" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">adjust</text><text x="238.00" y="452.03" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">enter</text><text x="288.40" y="452.03" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">start</text><text x="355.60" y="452.03" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">?</text><text x="372.40" y="452.03" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">help</text>
+</g>
+</svg>

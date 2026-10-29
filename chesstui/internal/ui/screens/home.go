@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	chesscore "github.com/kannachi323/chesstui/internal/chess"
 	"github.com/kannachi323/chesstui/internal/domain"
 	"github.com/kannachi323/chesstui/internal/lichess"
 	"github.com/kannachi323/chesstui/internal/ui/widgets"
@@ -98,20 +99,17 @@ func (h *Home) Update(msg tea.Msg) tea.Cmd {
 
 func (h *Home) View(width, height int) string {
 	t := h.ctx.Theme
-	rowWidth := 36
+	rowWidth := 38
 	rows := make([]string, len(homeItems))
 	for i, item := range homeItems {
 		label := h.ctx.item(item.label, i == h.selected)
 		detail := t.Faint().Render(item.detail)
 		rows[i] = padRight(label, rowWidth-2-lipgloss.Width(detail)) + detail
 	}
-	wordmark := t.Accent().Render(widgets.Wordmark)
-	if width < 40 || height < 18 {
-		wordmark = t.Accent().Bold(true).Render("♞ ") + t.Title().Render("chesstui")
-	}
-	sections := []string{
-		wordmark,
-		t.Faint().Render("chess in the terminal, on Lichess"),
+	lines := []string{
+		t.Accent().Bold(true).Render("♞") + "  " + t.Title().Render("chesstui"),
+		t.Muted().Render("Chess in the terminal, on Lichess."),
+		"",
 		h.ctx.menu(rows, h.selected, len(rows), rowWidth, true),
 	}
 	if h.loaded {
@@ -119,17 +117,22 @@ func (h *Home) View(width, height int) string {
 		if h.count > 0 {
 			stats += fmt.Sprintf(" · %d saved", h.count)
 		}
-		sections = append(sections, t.Faint().Render(stats))
+		lines = append(lines, "", t.Faint().Render(stats))
 		if h.err != nil {
-			sections = append(sections, h.ctx.note(errNote(h.err)))
+			lines = append(lines, h.ctx.note(errNote(h.err)))
 		}
 	}
-	gap := "\n\n"
-	if height < 20 {
-		gap = "\n"
+	text := lipgloss.NewStyle().Width(rowWidth).Render(strings.Join(lines, "\n"))
+
+	// A quiet starting position sits beside the menu when there is room.
+	board := widgets.Board{Theme: *t, Width: 34, Height: min(height, 17), Glyphs: h.ctx.Session.Config.Glyphs}
+	boardWidth, boardHeight := widgets.BoardSize(board.Width, board.Height, false)
+	if width < rowWidth+boardWidth+8 || height < boardHeight || height < 12 {
+		return text
 	}
-	block := strings.Join(sections, gap)
-	return lipgloss.NewStyle().Width(min(width, 48)).Align(lipgloss.Center).Render(block)
+	start, _ := chesscore.NewPosition("")
+	textBlock := lipgloss.PlaceVertical(boardHeight, lipgloss.Center, text)
+	return lipgloss.JoinHorizontal(lipgloss.Top, board.Render(start), "      ", textBlock)
 }
 
 func (h *Home) Hints() []widgets.Hint {

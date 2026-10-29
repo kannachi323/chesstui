@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 879 585" width="879" height="585" font-family="'JetBrains Mono','SF Mono',Menlo,Consolas,'DejaVu Sans Mono',monospace" font-size="14">
+<rect width="879" height="585" rx="12" fill="#111214"/>
+<g text-rendering="geometricPrecision">
+<text x="40.60" y="33.43" fill="#e2b55c" font-weight="700" text-anchor="middle">♞</text><text x="53.20" y="33.43" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">chesstui</text><text x="229.60" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Home</text><text x="280.00" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">Play</text><text x="330.40" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Watch</text><text x="389.20" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Puzzles</text><text x="464.80" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Study</text><text x="523.60" y="33.43" fill="#8f8c84" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Learn</text><text x="582.40" y="33.43" fill="#e2b55c" font-weight="700" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">Settings</text><text x="788.20" y="33.43" fill="#57554f" text-anchor="middle">○</text><text x="800.80" y="33.43" fill="#57554f" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">guest</text>
+
+
+
+
+
+
+
+<text x="204.40" y="179.03" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="67.20" lengthAdjust="spacingAndGlyphs">Settings</text>
+
+<text x="208.60" y="215.43" fill="#e2b55c" font-weight="700" text-anchor="middle">›</text><text x="221.20" y="215.43" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">Theme</text><text x="641.20" y="215.43" fill="#e2b55c" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">auto</text>
+<text x="221.20" y="233.63" fill="#e7e4dc" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">Pieces</text><text x="607.60" y="233.63" fill="#8f8c84" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">solid  </text><text x="670.60" y="233.63" fill="#8f8c84" text-anchor="middle">♚</text>
+<text x="221.20" y="251.83" fill="#e7e4dc" xml:space="preserve" textLength="117.60" lengthAdjust="spacingAndGlyphs">Confirm resign</text><text x="658.00" y="251.83" fill="#8f8c84" xml:space="preserve" textLength="16.80" lengthAdjust="spacingAndGlyphs">on</text>
+<text x="221.20" y="270.03" fill="#e7e4dc" xml:space="preserve" textLength="117.60" lengthAdjust="spacingAndGlyphs">Analysis depth</text><text x="658.00" y="270.03" fill="#8f8c84" xml:space="preserve" textLength="16.80" lengthAdjust="spacingAndGlyphs">16</text>
+<text x="221.20" y="288.23" fill="#e7e4dc" xml:space="preserve" textLength="84.00" lengthAdjust="spacingAndGlyphs">TV channel</text><text x="599.20" y="288.23" fill="#8f8c84" xml:space="preserve" textLength="75.60" lengthAdjust="spacingAndGlyphs">Top rated</text>
+<text x="221.20" y="306.43" fill="#e7e4dc" xml:space="preserve" textLength="58.80" lengthAdjust="spacingAndGlyphs">Lichess</text><text x="565.60" y="306.43" fill="#8f8c84" xml:space="preserve" textLength="109.20" lengthAdjust="spacingAndGlyphs">not signed in</text>
+
+
+<text x="204.40" y="361.03" fill="#57554f" xml:space="preserve" textLength="210.00" lengthAdjust="spacingAndGlyphs">Stockfish  not installed </text><text x="418.60" y="361.03" fill="#57554f" text-anchor="middle">·</text><text x="431.20" y="361.03" fill="#57554f" xml:space="preserve" textLength="184.80" lengthAdjust="spacingAndGlyphs">brew install stockfish</text>
+<text x="204.40" y="379.23" fill="#57554f" xml:space="preserve" textLength="92.40" lengthAdjust="spacingAndGlyphs">Config     </text><text x="301.00" y="379.23" fill="#57554f" text-anchor="middle">…</text><text x="305.20" y="379.23" fill="#57554f" xml:space="preserve" textLength="352.80" lengthAdjust="spacingAndGlyphs">reenshotssettings548004026/003/config.json</text>
+<text x="204.40" y="397.43" fill="#57554f" xml:space="preserve" textLength="386.40" lengthAdjust="spacingAndGlyphs">Library    ~/.local/share/chesstui/chesstui.db</text>
+
+
+
+
+
+
+
+
+<text x="40.60" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">↑</text><text x="49.00" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">↓</text><text x="61.60" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">select</text><text x="141.40" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">←</text><text x="149.80" y="561.23" fill="#e7e4dc" font-weight="700" text-anchor="middle">→</text><text x="162.40" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">change</text><text x="238.00" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="42.00" lengthAdjust="spacingAndGlyphs">enter</text><text x="288.40" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="50.40" lengthAdjust="spacingAndGlyphs">toggle</text><text x="364.00" y="561.23" fill="#e7e4dc" font-weight="700" xml:space="preserve" textLength="8.40" lengthAdjust="spacingAndGlyphs">?</text><text x="380.80" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="33.60" lengthAdjust="spacingAndGlyphs">help</text><text x="616.00" y="561.23" fill="#8f8c84" xml:space="preserve" textLength="218.40" lengthAdjust="spacingAndGlyphs">changes save automatically</text>
+</g>
+</svg>
