@@ -1,6 +1,11 @@
 *.o
 *.exe
 build/
+dist/
+web/node_modules/
+web/dist/
+.vercel/
 **/packs
 **/.csv
 **/*.zst
+.DS_Store

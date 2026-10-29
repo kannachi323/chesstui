@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chesstui
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: chesstui/go.mod
+          cache-dependency-path: chesstui/go.sum
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go build -trimpath ./cmd/chesstui

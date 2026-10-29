@@ -1,0 +1,18 @@
+Live Gameplay (Lichess Board API)
+==================================
+
+[x] Game seek / challenge flow — new screen (small)
+[x] http_post_bearer + NDJSON line-buffer streaming (small)
+[x] Clock display — static, updated per move (small)
+[x] select() loop: multiplex stream + keyboard input (medium)
+[x] cli_play_live — board render, stream opponent moves, send moves (medium)
+[x] Graceful resign / abort / disconnect handling (medium)
+
+Remaining / Polish
+==================
+
+[ ] Cancel seek while waiting (Ctrl+C handler or 'q' during lichess_wait_for_game)
+[ ] Chess960 / variant initial FEN support (gameFull.initialFen field)
+[ ] Abort instead of resign in first few moves (POST /api/board/game/{id}/abort)
+[ ] Draw offer / accept (POST /api/board/game/{id}/draw/{bool})
+[ ] Reconnect on stream disconnect (retry http_stream_open in cli_play_live)

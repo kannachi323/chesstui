@@ -1,0 +1,85 @@
+# GoReleaser config for ChessTUI. See docs/RELEASE.md.
+# Check locally with:  goreleaser check && goreleaser release --snapshot --clean
+version: 2
+project_name: chesstui
+
+before:
+  hooks:
+    - sh -c "cd chesstui && go test ./..."
+
+builds:
+  - id: chesstui
+    dir: chesstui
+    main: ./cmd/chesstui
+    binary: chesstui
+    env:
+      - CGO_ENABLED=0 # modernc SQLite is pure Go, so every target cross-compiles
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags: [-trimpath]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - SECURITY.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: kannachi323
+    name: chesstui # rename the GitHub repo from chess-cli first (see docs/RELEASE.md)
+  draft: true # review the draft on GitHub before publishing
+  prerelease: auto
+
+# Homebrew tap. Uncomment once a tap repository exists, for example
+# github.com/kannachi323/homebrew-tap, and a token with write access to it
+# is stored as the HOMEBREW_TAP_GITHUB_TOKEN repository secret.
+#
+# brews:
+#   - name: chesstui
+#     repository:
+#       owner: kannachi323          # placeholder
+#       name: homebrew-tap          # placeholder
+#       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+#     directory: Formula
+#     homepage: https://chesstui.vercel.app   # placeholder
+#     description: Chess in the terminal, connected to Lichess
+#     license: Apache-2.0
+#     commit_author:
+#       name: kannachi323
+#       email: YOUR_EMAIL@example.com     # placeholder
+#     caveats: |
+#       Local engine play and analysis use Stockfish: brew install stockfish
+#     test: |
+#       system "#{bin}/chesstui", "--version"
