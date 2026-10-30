@@ -1,3 +1,5 @@
+//go:build !js
+
 package storage
 
 import (
@@ -11,8 +13,6 @@ import (
 
 	"github.com/kannachi323/chesstui/internal/domain"
 )
-
-var ErrNotFound = errors.New("record not found")
 
 const upsertPuzzleSQL = `
 INSERT INTO puzzles(id, fen, moves, rating, plays, themes, source, game_id, game_pgn,

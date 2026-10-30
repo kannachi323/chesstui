@@ -4,7 +4,8 @@ build/
 dist/
 web/node_modules/
 web/dist/
-.vercel/
+web/public/demo/
+.wrangler/
 **/packs
 **/.csv
 **/*.zst

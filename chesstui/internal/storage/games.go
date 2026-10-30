@@ -1,3 +1,5 @@
+//go:build !js
+
 package storage
 
 import (
@@ -48,18 +50,6 @@ ON CONFLICT(game_id, ply, depth) DO UPDATE SET
 		return fmt.Errorf("save analysis for %s: %w", analysis.GameID, err)
 	}
 	return nil
-}
-
-// GameSummary is a row in the game library.
-type GameSummary struct {
-	ID       string
-	Source   string
-	White    string
-	Black    string
-	Result   string
-	PlayedAt time.Time
-	SavedAt  time.Time
-	Reviewed bool
 }
 
 // ListGames returns the newest games first.

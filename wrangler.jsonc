@@ -1,0 +1,13 @@
+// The landing page as static assets on Cloudflare Workers. `wrangler deploy`
+// runs the build first: the browser demo needs Go (Workers Builds ships it),
+// and without Go the page is published without the "Try it" button.
+{
+  "name": "chesstui",
+  "compatibility_date": "2026-10-29",
+  "build": {
+    "command": "npm ci --prefix web && (command -v go >/dev/null && make wasm || echo 'No Go here: building the site without the browser demo') && npm run build --prefix web"
+  },
+  "assets": {
+    "directory": "./web/dist"
+  }
+}

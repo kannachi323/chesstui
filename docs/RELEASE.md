@@ -102,6 +102,15 @@ These were decided without the owner and are easy to revisit.
 - **Testing without Stockfish.** A small fake UCI engine in `chesstui/internal/app/testdata/fakeengine` is built during tests, so Play, review and live analysis run end to end and are photographed without Stockfish. It plays and scores by material only, so the evaluations in the screenshots are illustrative.
 - **Removed from the old Study screen:** in-place replay and analysis of Lichess games. A game is now copied into the library and opened in Analyze.
 
+### Browser demo
+
+- **What it is.** The landing page can run the real app: `cmd/chesstui-web` compiles chesstui to WebAssembly and runs it in xterm.js, behind a "Try it in your browser" button. Nothing loads until it is clicked, about 3 MB compressed. The button is hidden below 720 px, where there is no keyboard to drive it.
+- **Engine.** The browser has no engine process, so the demo uses [chess-api.com](https://chess-api.com), which runs Stockfish on its servers and accepts browser requests from any origin. Native builds can use it too by setting `engine_api` in the config. Its limits: one line instead of three in live analysis, depth 18 at most, no Skill Level (Play mixes shallow searches with occasional random moves at low levels), and FENs with an en passant square are rejected, so the square is cleared and the engine never suggests an en passant capture.
+- **Storage.** SQLite does not run in WebAssembly. The browser build swaps in an in-memory store (`internal/storage/memory.go`, build tag `js`) that saves a JSON snapshot to localStorage after every change, and keeps the config there too. Files, Lichess and the books folder are unavailable; Settings says so.
+- **Bubble Tea patch.** Bubble Tea has no js/wasm port: four platform functions are missing. `make wasm` copies the module, adds `cmd/chesstui-web/_overlay/bubbletea_js.go`, and builds against it through a separate `go.mod` in `build/web`, so the main module and release builds are untouched.
+- **xterm.js.** Pinned to 5.5.0, because 6.0.0 throws on the mode queries Bubble Tea sends at start-up. `convertEol` stands in for the tty's newline translation, which Bubble Tea's renderer relies on.
+- **Hosting.** The site is static assets on Cloudflare Workers (`wrangler.jsonc`), replacing the earlier Vercel config. Asset requests are free and unmetered, and the 17 MB WebAssembly file is under Cloudflare's 25 MiB per-file limit; keep an eye on that if the app grows. The WebAssembly files are build output and are not committed: `wrangler deploy` runs the build, which calls `make wasm` when Go is available (Workers Builds ships Go 1.27) and otherwise publishes the page without the button. `web/public/_headers` caches fingerprinted assets for a year and the demo for an hour.
+
 ## Remaining owner steps
 
 1. Rename the GitHub repository from `chess-cli` to `chesstui`, or adjust the release config as described above.
@@ -110,4 +119,4 @@ These were decided without the owner and are easy to revisit.
 4. Optionally run `staticcheck ./...`. It was not installed here. Install GoReleaser (`brew install goreleaser`) for future `make snapshot` runs.
 5. Set up the Homebrew tap, if you want one.
 6. Push the branch, open a PR into `main`, and tag `v2.0.0` after it merges.
-7. Deploy `web/` to Vercel. `vercel.json` already points at it.
+7. Deploy the site to Cloudflare: connect the repository in the dashboard under Workers & Pages (Workers Builds, deploy command `npx wrangler deploy`), or run `npx wrangler deploy` from the repository root after `npx wrangler login`. Check the "Try it in your browser" button appears; if it doesn't, the build had no Go (see Browser demo above). Then set the real URL as `homepage` in `.goreleaser.yaml`.

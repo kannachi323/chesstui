@@ -244,6 +244,96 @@ h1 {
   opacity: 1;
 }
 
+/* Live demo */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: #e2b55c;
+  color: #111214;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pill:hover {
+  background: #ecc778;
+}
+
+.pill:focus-visible,
+.live-close:focus-visible {
+  outline: 2px solid #e2b55c;
+  outline-offset: 2px;
+}
+
+.hero-terminal .try {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+}
+
+.live {
+  position: absolute;
+  inset: 0;
+}
+
+.live-screen {
+  position: absolute;
+  inset: var(--space-3);
+}
+
+.live-screen .xterm-viewport {
+  background: #111214 !important;
+}
+
+.live-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  background: #111214;
+  color: #8f8c84;
+  font-size: 15px;
+  text-align: center;
+  padding: var(--space-5);
+}
+
+.live-close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #8f8c84;
+  cursor: pointer;
+}
+
+.live-close:hover {
+  background: #2a2b2d;
+  color: #e7e4dc;
+}
+
+/* A phone keyboard can't drive a full-screen terminal app. */
+@media (max-width: 720px) {
+  .hero-terminal .try {
+    display: none;
+  }
+}
+
 /* Features */
 
 .features {

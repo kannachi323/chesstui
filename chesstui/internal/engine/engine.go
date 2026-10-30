@@ -53,18 +53,21 @@ type Limit struct {
 	Skill    int // 0–20 Stockfish Skill Level; -1 leaves full strength
 }
 
-// Options configure the engine process.
+// Options configure the engine. API, when set, is an HTTP engine such as
+// DefaultAPI and takes the place of a local process.
 type Options struct {
 	Path    string
+	API     string
 	Threads int
 	HashMB  int
 }
 
-// Engine is one long-running UCI process. Calls are serialized; the process
-// starts on first use and restarts after a crash.
+// Engine is one long-running UCI process, or an HTTP engine API. Calls are
+// serialized; the process starts on first use and restarts after a crash.
 type Engine struct {
 	opts Options
 	path string
+	api  string
 
 	mu      sync.Mutex
 	cmd     *exec.Cmd
@@ -111,6 +114,9 @@ func Find(configured string) (string, error) {
 
 // New resolves the engine. The process is started lazily.
 func New(opts Options) (*Engine, error) {
+	if opts.API != "" {
+		return &Engine{opts: opts, path: opts.API, api: opts.API, name: "Stockfish · " + host(opts.API)}, nil
+	}
 	path, err := Find(opts.Path)
 	if err != nil {
 		return nil, err
@@ -123,7 +129,7 @@ func New(opts Options) (*Engine, error) {
 func (e *Engine) Ensure() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if e.cmd != nil {
+	if e.cmd != nil || e.api != "" {
 		return nil
 	}
 	return e.start()
@@ -252,6 +258,9 @@ func (e *Engine) Close() {
 func (e *Engine) Search(ctx context.Context, request Request, limit Limit) (Analysis, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.api != "" {
+		return e.searchRemote(ctx, request, limit)
+	}
 	if e.cmd == nil {
 		if err := e.start(); err != nil {
 			return Analysis{}, err
@@ -403,6 +412,9 @@ func (e *Engine) Analyze(ctx context.Context, fen string, depth int) (Analysis, 
 // 8 (full strength), mirroring Lichess AI levels.
 func (e *Engine) Play(ctx context.Context, request Request, level int) (Analysis, error) {
 	level = min(8, max(1, level))
+	if e.api != "" {
+		return e.playRemote(ctx, request, level)
+	}
 	limit := Limit{MoveTime: time.Duration(50*level*level) * time.Millisecond, Skill: (level - 1) * 20 / 7}
 	if level == 8 {
 		limit.Skill = -1
@@ -416,4 +428,13 @@ func WhiteScore(cp, mate int, whiteToMove bool) (int, int) {
 		return cp, mate
 	}
 	return -cp, -mate
+}
+
+// host is the readable part of an API URL, such as chess-api.com.
+func host(api string) string {
+	name := strings.TrimPrefix(strings.TrimPrefix(api, "https://"), "http://")
+	if i := strings.IndexByte(name, '/'); i >= 0 {
+		name = name[:i]
+	}
+	return name
 }

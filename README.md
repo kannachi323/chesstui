@@ -60,6 +60,8 @@ chesstui has no engine of its own. It talks UCI to the one you already have:
 
 Each turn, the engine gets the starting position and the full move list, so it sees the whole game.
 
+No engine installed? Set `"engine_api": "https://chess-api.com/v1"` in the config to use Stockfish on [chess-api.com](https://chess-api.com) instead. It is free and needs no account, but searches stop at depth 18 and live analysis shows one line.
+
 Without an engine you can still read, replay games, explore lines by hand, and solve puzzles.
 
 ## Books
@@ -113,7 +115,7 @@ make live      # smoke-test the real lichess.org API (about eight requests)
 ```
 
 - The app is the Go module in [`chesstui/`](chesstui). See [Architecture](docs/ARCHITECTURE.md), the [Roadmap](docs/ROADMAP.md) and [Releasing](docs/RELEASE.md).
-- The landing page in [`web/`](web) builds with `npm run build --prefix web`.
+- The landing page in [`web/`](web) builds with `npm run build --prefix web`. `make wasm` first adds the browser demo, chesstui compiled to WebAssembly and run in xterm.js.
 - The original C version is in [`legacy/`](legacy).
 
 ## License

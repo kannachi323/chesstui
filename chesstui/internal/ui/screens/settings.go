@@ -104,6 +104,10 @@ func (s *Settings) Update(msg tea.Msg) tea.Cmd {
 		case settingAccount:
 			return s.signOut(key)
 		case settingEngine:
+			if api := s.ctx.Session.Config.EngineAPI; api != "" {
+				s.note = plainNote("Using the engine at " + api)
+				return nil
+			}
 			if key == "enter" || key == "space" {
 				s.editing = &textInput{value: s.ctx.Session.Config.EnginePath}
 			}
@@ -181,7 +185,7 @@ func (s *Settings) change(back bool) {
 	case settingReview:
 		cfg.ReviewDepth = step(cfg.ReviewDepth, 2, 6, 30, back)
 	case settingBeta:
-		cfg.LichessBeta = !cfg.LichessBeta
+		cfg.LichessBeta = !cfg.LichessBeta && !config.Browser
 	case settingChannel:
 		cfg.DefaultWatch = cycle([]string{"best", "bullet", "blitz", "rapid", "classical", "chess960", "bot"}, cfg.DefaultWatch, back)
 	case settingResign:
@@ -205,22 +209,25 @@ func (s *Settings) View(width, height int) string {
 	} else if s.ctx.Session.HasToken() {
 		account = "signed in · sign out"
 	}
+	// Rows that do nothing in the current setup are dimmed: Lichess rows
+	// with the beta off, process settings when an HTTP engine is in use.
+	remote := cfg.EngineAPI != ""
 	type item struct {
 		label, value string
-		beta         bool
+		off          bool
 	}
 	items := []item{
 		{"Theme", cfg.Theme, false},
 		{"Pieces", cfg.Glyphs + "  " + sample(cfg.Glyphs), false},
 		{"Engine", engineValue, false},
-		{"Engine threads", fmt.Sprint(cfg.EngineThreads), false},
-		{"Engine memory", fmt.Sprintf("%d MB", cfg.EngineHashMB), false},
+		{"Engine threads", fmt.Sprint(cfg.EngineThreads), remote},
+		{"Engine memory", fmt.Sprintf("%d MB", cfg.EngineHashMB), remote},
 		{"Analysis depth", fmt.Sprint(cfg.AnalysisDepth), false},
 		{"Review depth", fmt.Sprint(cfg.ReviewDepth), false},
-		{"Lichess beta", onOff[cfg.LichessBeta], false},
-		{"TV channel", channelLabel(cfg.DefaultWatch), true},
-		{"Confirm resign", onOff[cfg.ConfirmResign], true},
-		{"Lichess account", account, true},
+		{"Lichess beta", betaValue(cfg.LichessBeta), false},
+		{"TV channel", channelLabel(cfg.DefaultWatch), !cfg.LichessBeta},
+		{"Confirm resign", onOff[cfg.ConfirmResign], !cfg.LichessBeta},
+		{"Lichess account", account, !cfg.LichessBeta},
 	}
 	rows := make([]string, len(items))
 	for i, it := range items {
@@ -229,7 +236,7 @@ func (s *Settings) View(width, height int) string {
 			value = t.Accent().Render(it.value)
 		}
 		label := s.ctx.item(it.label, i == s.selected)
-		if it.beta && !cfg.LichessBeta {
+		if it.off {
 			label, value = t.Faint().Render(it.label), t.Faint().Render(it.value)
 		}
 		rows[i] = padRight(label, rowWidth-2-lipgloss.Width(value)) + value
@@ -289,3 +296,13 @@ func (s *Settings) Hints() []widgets.Hint {
 func (s *Settings) Status() string { return "changes save automatically" }
 
 func (s *Settings) CapturesKey(string) bool { return s.editing != nil }
+
+func betaValue(on bool) string {
+	switch {
+	case config.Browser:
+		return "in the terminal app"
+	case on:
+		return "on"
+	}
+	return "off"
+}

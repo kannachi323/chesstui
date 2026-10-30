@@ -1,3 +1,5 @@
+//go:build !js
+
 package storage
 
 import (
@@ -8,16 +10,6 @@ import (
 	"strings"
 	"time"
 )
-
-// Book is a library entry and the reader's place in it.
-type Book struct {
-	ID        string
-	Title     string
-	Path      string // empty for books built into chesstui
-	Position  int    // index of the move or block the reader was on
-	Bookmarks []int
-	OpenedAt  time.Time
-}
 
 func (s *Store) SaveBook(ctx context.Context, book Book) error {
 	marks := make([]string, len(book.Bookmarks))

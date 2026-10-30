@@ -23,3 +23,8 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: go build -trimpath ./cmd/chesstui
+      - name: Browser build
+        working-directory: .
+        run: make wasm
+      - name: Browser storage tests
+        run: PATH="$PATH:$(go env GOROOT)/lib/wasm" GOOS=js GOARCH=wasm go test ./internal/storage

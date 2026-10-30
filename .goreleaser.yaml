@@ -73,7 +73,7 @@ release:
 #       name: homebrew-tap          # placeholder
 #       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
 #     directory: Formula
-#     homepage: https://chesstui.vercel.app   # placeholder
+#     homepage: https://chesstui.workers.dev   # placeholder
 #     description: Chess in the terminal, connected to Lichess
 #     license: Apache-2.0
 #     commit_author:

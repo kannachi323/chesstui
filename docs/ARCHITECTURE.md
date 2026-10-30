@@ -18,16 +18,17 @@ flowchart LR
 ## Package boundaries
 
 - `cmd/chesstui`: composition root, logging, process lifecycle.
+- `cmd/chesstui-web`: the WebAssembly build for the landing page. It connects Bubble Tea to xterm.js through a small JavaScript bridge and uses the HTTP engine and the in-memory store.
 - `internal/app`: global navigation, window layout, asynchronous message routing.
 - `internal/ui/screens`: small, stateful Bubble Tea screen models.
 - `internal/ui/widgets` and `theme`: reusable rendering with no network or persistence work.
 - `internal/lichess`: endpoint-specific typed API methods, OAuth PKCE, NDJSON streams, rate-limit handling.
 - `internal/chess`: a narrow rules/timeline adapter around `chess-on-go` so the library can be replaced without rewriting screens.
-- `internal/engine`: one long-running UCI process for whatever engine the user installed. It sends the start position and every move each turn, and supports MultiPV, strength, threads and hash.
+- `internal/engine`: one long-running UCI process for whatever engine the user installed. It sends the start position and every move each turn, and supports MultiPV, strength, threads and hash. With `engine_api` set it calls an HTTP engine (chess-api.com) instead.
 - `internal/pgn`: a PGN tree with comments, side lines and annotation glyphs, which reads and writes losslessly.
 - `internal/review`: winning chances, move marks, accuracy and the evaluation graph.
 - `internal/book`: annotated-PGN and Markdown books, plus the embedded starter book.
-- `internal/storage`: SQLite schema and repositories for puzzles, attempts, games, and analysis.
+- `internal/storage`: SQLite schema and repositories for puzzles, attempts, games, analysis and books. The browser build replaces SQLite with an in-memory store that hands JSON snapshots to the page.
 - `internal/puzzles`: bounded-memory CSV/Zstandard importer.
 - `internal/auth`, `config`, `platform`, `session`: infrastructure and application services.
 - `internal/termshot`: converts rendered frames to SVG for the generated screenshots in `docs/screenshots`.

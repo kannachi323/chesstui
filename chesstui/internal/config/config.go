@@ -13,6 +13,14 @@ import (
 
 const applicationName = "chesstui"
 
+// Browser is true in the WebAssembly build, which has no files, no engine
+// process and no Lichess sign-in.
+const Browser = runtime.GOOS == "js"
+
+// SaveHook, when set, receives the encoded config instead of Save writing
+// a file. The browser build keeps it in localStorage.
+var SaveHook func(data []byte) error
+
 // Paths contains every filesystem location used by ChessTUI.
 type Paths struct {
 	ConfigFile string
@@ -31,8 +39,11 @@ type Config struct {
 	Glyphs     string `json:"glyphs"`
 	LichessURL string `json:"lichess_url"`
 	// EnginePath points at any UCI engine. Empty means find Stockfish.
-	EnginePath        string `json:"engine_path,omitempty"`
-	LegacyEnginePath  string `json:"stockfish_path,omitempty"` // read from older configs
+	EnginePath       string `json:"engine_path,omitempty"`
+	LegacyEnginePath string `json:"stockfish_path,omitempty"` // read from older configs
+	// EngineAPI is an HTTP engine such as https://chess-api.com/v1, used
+	// instead of a local engine when set.
+	EngineAPI         string `json:"engine_api,omitempty"`
 	EngineThreads     int    `json:"engine_threads"`
 	EngineHashMB      int    `json:"engine_hash_mb"`
 	AnalysisDepth     int    `json:"analysis_depth"`
@@ -54,7 +65,7 @@ func Default() Config {
 		ReviewDepth:       14,
 		EngineThreads:     defaultThreads(),
 		EngineHashMB:      128,
-		LichessBeta:       true,
+		LichessBeta:       !Browser,
 		DefaultWatch:      "best",
 		MouseEnabled:      true,
 		ConfirmResign:     true,
@@ -96,6 +107,11 @@ func Load(path string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("read config: %w", err)
 	}
+	return Decode(data, cfg)
+}
+
+// Decode reads a config over the given defaults.
+func Decode(data []byte, cfg Config) (Config, error) {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, fmt.Errorf("decode config: %w", err)
 	}
@@ -108,6 +124,9 @@ func Save(path string, cfg Config) error {
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode config: %w", err)
+	}
+	if SaveHook != nil {
+		return SaveHook(data)
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create config directory: %w", err)
@@ -168,6 +187,9 @@ func normalize(cfg *Config) {
 		cfg.EnginePath = cfg.LegacyEnginePath
 	}
 	cfg.LegacyEnginePath = ""
+	if Browser {
+		cfg.LichessBeta = false
+	}
 	if cfg.EngineThreads < 1 || cfg.EngineThreads > 64 {
 		cfg.EngineThreads = defaultThreads()
 	}

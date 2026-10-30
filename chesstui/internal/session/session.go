@@ -34,7 +34,7 @@ type Session struct {
 func (s *Session) Engine() (*engine.Engine, error) {
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
-	opts := engine.Options{Path: s.Config.EnginePath, Threads: s.Config.EngineThreads, HashMB: s.Config.EngineHashMB}
+	opts := engine.Options{Path: s.Config.EnginePath, API: s.Config.EngineAPI, Threads: s.Config.EngineThreads, HashMB: s.Config.EngineHashMB}
 	if s.engine != nil && opts == s.engineOpts {
 		return s.engine, nil
 	}

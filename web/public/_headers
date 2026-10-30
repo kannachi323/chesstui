@@ -1,0 +1,7 @@
+# Cloudflare static asset headers. Vite fingerprints everything in /assets.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The demo keeps its file names between builds, so it is revalidated hourly.
+/demo/*
+  Cache-Control: public, max-age=3600
